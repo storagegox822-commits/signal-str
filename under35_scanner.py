@@ -149,7 +149,7 @@ def scan_5leagues(days_ahead=7):
 # ========================================
 # DATA LOADERS
 # ========================================
-def load_football_data_csv(league_code, season='2526'):
+def load_football_data_csv(league_code, season='2425'):
     """football-data.co.uk CSV"""
     base_url = f"https://www.football-data.co.uk/mmz4281/{season}"
     csv_map = {
@@ -174,7 +174,7 @@ def load_football_data_csv(league_code, season='2526'):
             return pd.DataFrame()
     return pd.DataFrame()
 
-def load_fbref_fixtures(league_id, season='2526'):
+def load_fbref_fixtures(league_id, season='2425'):
     """FBref via soccerdata"""
     try:
         import soccerdata as sd
