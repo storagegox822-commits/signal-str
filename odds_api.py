@@ -99,7 +99,15 @@ class OddsFetcher:
             return cached
 
         # Parse Keys (Comma separated)
-        env_keys = os.getenv("ODDS_API_KEY", "").split(",")
+        # Parse Keys (Comma separated or numbered)
+        env_keys = []
+        if os.getenv("ODDS_API_KEY"):
+            env_keys.extend(os.getenv("ODDS_API_KEY").split(","))
+        
+        # Check specific numbered keys (legacy + new)
+        if os.getenv("ODDS_API_KEY_1"): env_keys.append(os.getenv("ODDS_API_KEY_1"))
+        if os.getenv("ODDS_API_KEY_2"): env_keys.append(os.getenv("ODDS_API_KEY_2"))
+        
         api_keys = [k.strip() for k in env_keys if k.strip()]
         
         if not api_keys:
