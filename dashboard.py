@@ -199,6 +199,29 @@ with tab1:
             st.error(f"Error loading signals: {e}")
     
     if not signals_df.empty:
+        # --- Status Tracking ---
+        if USE_INTERNAL_API:
+            try:
+                from app.main import get_ai_history_endpoint, get_history
+                ai_hist = get_ai_history_endpoint()
+                bet_hist = get_history()
+
+                def check_in_history(home, away, history_list, key_name='matches'):
+                    for item in history_list:
+                        matches = item.get(key_name, [])
+                        for m_str in matches:
+                            if home in m_str and away in m_str:
+                                return True
+                    return False
+
+                signals_df['🤖 AI'] = signals_df.apply(lambda x: '✅' if check_in_history(x['Home'], x['Away'], ai_hist) else '❌', axis=1)
+                signals_df['📝 Exp'] = signals_df.apply(lambda x: '✅' if check_in_history(x['Home'], x['Away'], bet_hist) else '❌', axis=1)
+
+                cols = ['🤖 AI', '📝 Exp'] + [c for c in signals_df.columns if c not in ['🤖 AI', '📝 Exp']]
+                signals_df = signals_df[cols]
+            except Exception as e:
+                st.error(f"Status Error: {e}")
+
         st.dataframe(signals_df, use_container_width=True)
     else:
         st.info("No signals found. Try running a scan.")
