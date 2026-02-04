@@ -383,7 +383,7 @@ with tab_ai:
                         st.session_state['last_analysis'] = analysis_text
                         st.session_state['analyzed_matches'] = matches
                         st.markdown(analysis_text)
-except Exception as e: st.error(f"Error: {e}")
+                except Exception as e: st.error(f"Error: {e}")
 
         # --- Tab for AI History ---
         st.write("---")
