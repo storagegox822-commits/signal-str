@@ -473,6 +473,10 @@ with tab_ai:
                          title = f"📅 {date_str} | 🤖 {model} | {len(matches)} Матчей"
                          
                          with st.expander(title):
+                             st.markdown("### 📊 Прогноз")
+                             st.markdown(item.get('analysis', ''))
+                             st.divider()
+                             
                              st.markdown(f"**Матчи:**")
                              for m in matches:
                                  st.text(f"• {m}")
