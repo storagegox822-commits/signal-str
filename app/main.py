@@ -43,6 +43,10 @@ class KellyRequest(BaseModel):
     win_prob: float
     bankroll: float
 
+class DeleteHistoryRequest(BaseModel):
+    timestamp: float = None
+    delete_all: bool = False
+
 # ... (rest of code)
 
 # --- Helpers ---
@@ -341,9 +345,6 @@ def delete_ai_history(req: DeleteHistoryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-class DeleteHistoryRequest(BaseModel):
-    timestamp: float = None
-    delete_all: bool = False
 
 @app.post("/kelly")
 def calculate_kelly(req: KellyRequest):
