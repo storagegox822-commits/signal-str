@@ -110,10 +110,14 @@ def main():
         print("❌ Could not parse 3 matches outcomes.")
         return
 
-    # 5. Generate Variations & Stakes
+    # 5. Generate Variations & Stakes (Fixed Profit Logic)
     variations = generate_variations(parsed_outcomes)
     BUDGET = 3000
-    stakes = calculate_stakes(BUDGET, len(variations))
+    
+    # Use Dutching with default odds (1.9) since we don't have specific outcome odds from AI yet.
+    # This results in flat stakes but follows the "Fixed Profit" distribution logic.
+    from app.utils import calculate_dutching_stakes
+    stakes = calculate_dutching_stakes(BUDGET, variations, odds_flat_list=None)
     
     print(f"💰 Generated {len(variations)} variations. Stake: {stakes[0]:.2f} RUB")
     
