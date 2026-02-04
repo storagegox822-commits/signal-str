@@ -438,31 +438,59 @@ with tab_ai:
 
         # --- Tab for AI History ---
         st.write("---")
-        with st.expander("📜 История AI Анализов"):
-             if st.button("🔄 Обновить Историю"): st.rerun()
+        with st.expander("📜 История AI Анализов", expanded=True):
+             col_h1, col_h2 = st.columns([3, 1])
+             if col_h1.button("🔄 Обновить Историю"): st.rerun()
+             if col_h2.button("🗑️ Очистить ВСЮ Историю", type="primary"):
+                 if USE_INTERNAL_API:
+                     from app.main import delete_ai_history
+                     # Need to mock DeleteHistoryRequest if not imported or use dict
+                     # But we can import it
+                     from app.main import DeleteHistoryRequest
+                     delete_ai_history(DeleteHistoryRequest(delete_all=True))
+                     st.success("История очищена!")
+                     import time
+                     time.sleep(1)
+                     st.rerun()
+
              try:
                  hist_data = []
                  if USE_INTERNAL_API:
-                     from app.main import get_ai_history_endpoint
+                     from app.main import get_ai_history_endpoint, delete_ai_history, DeleteHistoryRequest
                      hist_data = get_ai_history_endpoint()
-                 else:
-                     # For external API (not currently used in monolithic but good practice)
-                     pass
-
+                 
                  if not hist_data:
                      st.info("История пуста.")
                  else:
                      for idx, item in enumerate(hist_data):
                          date_str = item.get('date_str', 'N/A')
-                         matches_short = ", ".join([m.split('vs')[0] for m in item.get('matches', [])])
+                         matches = item.get('matches', [])
+                         model = item.get('model', 'Unknown AI')
+                         timestamp = item.get('timestamp', 0)
                          
-                         with st.container():
-                             c1, c2 = st.columns([4, 1])
-                             c1.markdown(f"**{date_str}** | {matches_short}...")
-                             if c2.button(f"👁️ View #{idx}"):
+                         # Nice formatting for Matches
+                         matches_display = [m.split('vs')[0].strip() for m in matches]
+                         title = f"📅 {date_str} | 🤖 {model} | {len(matches)} Матчей"
+                         
+                         with st.expander(title):
+                             st.markdown(f"**Матчи:**")
+                             for m in matches:
+                                 st.text(f"• {m}")
+                             
+                             c1, c2 = st.columns([1, 1])
+                             if c1.button(f"👁️ Загрузить в Редактор", key=f"load_{idx}"):
                                  st.session_state['last_analysis'] = item['analysis']
                                  st.session_state['analyzed_matches'] = item['matches']
-                                 st.success("Loaded from History!")
+                                 st.success("Loaded!")
+                                 
+                             if c2.button(f"🗑️ Удалить", key=f"del_{idx}"):
+                                 if USE_INTERNAL_API:
+                                     delete_ai_history(DeleteHistoryRequest(timestamp=timestamp))
+                                     st.success("Deleted!")
+                                     import time
+                                     time.sleep(0.5)
+                                     st.rerun()
+                                     
              except Exception as e:
                  st.error(f"History load error: {e}")
 

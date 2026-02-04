@@ -313,6 +313,34 @@ def save_ai_cache(item):
 def get_ai_history_endpoint():
     return get_ai_cache()
 
+@app.post("/delete_ai_history")
+def delete_ai_history(req: DeleteHistoryRequest):
+    """
+    Delete AI history item by timestamp or delete all.
+    """
+    try:
+        if not os.path.exists(AI_HISTORY_FILE):
+             return {"status": "empty"}
+             
+        with open(AI_HISTORY_FILE, "r") as f:
+            history = json.load(f)
+            
+        initial_len = len(history)
+        
+        if req.delete_all:
+            history = []
+        elif req.timestamp:
+            # Filter out the item with matching timestamp
+            # Use a small tolerance for float comparison if needed, or exact match
+            history = [h for h in history if abs(h.get("timestamp", 0) - req.timestamp) > 0.001]
+            
+        with open(AI_HISTORY_FILE, "w") as f:
+            json.dump(history, f, indent=4)
+            
+        return {"status": "deleted", "deleted_count": initial_len - len(history)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/kelly")
 def calculate_kelly(req: KellyRequest):
     """
