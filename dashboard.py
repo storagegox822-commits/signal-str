@@ -383,7 +383,37 @@ with tab_ai:
                         st.session_state['last_analysis'] = analysis_text
                         st.session_state['analyzed_matches'] = matches
                         st.markdown(analysis_text)
-                except Exception as e: st.error(f"Error: {e}")
+except Exception as e: st.error(f"Error: {e}")
+
+        # --- Tab for AI History ---
+        st.write("---")
+        with st.expander("📜 История AI Анализов"):
+             if st.button("🔄 Обновить Историю"): st.rerun()
+             try:
+                 hist_data = []
+                 if USE_INTERNAL_API:
+                     from app.main import get_ai_history_endpoint
+                     hist_data = get_ai_history_endpoint()
+                 else:
+                     # For external API (not currently used in monolithic but good practice)
+                     pass
+
+                 if not hist_data:
+                     st.info("История пуста.")
+                 else:
+                     for idx, item in enumerate(hist_data):
+                         date_str = item.get('date_str', 'N/A')
+                         matches_short = ", ".join([m.split('vs')[0] for m in item.get('matches', [])])
+                         
+                         with st.container():
+                             c1, c2 = st.columns([4, 1])
+                             c1.markdown(f"**{date_str}** | {matches_short}...")
+                             if c2.button(f"👁️ View #{idx}"):
+                                 st.session_state['last_analysis'] = item['analysis']
+                                 st.session_state['analyzed_matches'] = item['matches']
+                                 st.success("Loaded from History!")
+             except Exception as e:
+                 st.error(f"History load error: {e}")
 
         if 'last_analysis' in st.session_state:
             if st.button("🔄 Перенести в Редактор Экспрессов"):
