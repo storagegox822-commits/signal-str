@@ -74,20 +74,71 @@ if missing_keys:
     st.sidebar.warning(f"⚠️ Missing Secrets:\n" + "\n".join([f"- {k}" for k in missing_keys]))
     st.sidebar.info("Add them in Streamlit Cloud -> Settings -> Secrets")
 # ----------------------
-days = st.sidebar.slider("Scan Days Ahead", 1, 14, 7)
-if st.sidebar.button("Run Scan"):
-    with st.spinner("Scanning leagues..."):
-        try:
-            if USE_INTERNAL_API:
-                 res = run_scan(days)
-                 if res.get("status") == "success":
-                     st.sidebar.success(f"Scan complete! Found {res.get('found')} signals.")
-                 else:
-                     st.sidebar.error(f"Scan failed: {res.get('log')}")
-            else:
-                 requests.post(f"http://localhost:8000/scan/{days}")
-        except Exception as e:
-            st.sidebar.error(f"Scan Error: {e}")
+# --- AUTO-SCAN COUNTDOWN ---
+from datetime import datetime, timedelta, timezone
+
+def get_next_run_time():
+    """
+    Calculates next run time based on schedule:
+    Every 3 days (1, 4, 7, 10...) at 09:00 UTC.
+    """
+    now = datetime.now(timezone.utc)
+    
+    # Scheduled days of month
+    schedule_days = [d for d in range(1, 32, 3)] # 1, 4, 7... 31
+    
+    current_day = now.day
+    next_day = None
+    
+    # Find next scheduled day in this month
+    for d in schedule_days:
+        if d == current_day:
+            # If today is a run day, check if 09:00 has passed
+            run_time = now.replace(day=d, hour=9, minute=0, second=0, microsecond=0)
+            if now < run_time:
+                return run_time # Today later
+        if d > current_day:
+            next_day = d
+            break
+            
+    if next_day:
+        # Later this month
+        return now.replace(day=next_day, hour=9, minute=0, second=0, microsecond=0)
+    else:
+        # Next month, day 1
+        # Handle month rollover
+        if now.month == 12:
+            next_month = 1
+            next_year = now.year + 1
+        else:
+            next_month = now.month + 1
+            next_year = now.year
+            
+        return now.replace(year=next_year, month=next_month, day=1, hour=9, minute=0, second=0, microsecond=0)
+
+next_run = get_next_run_time()
+time_remaining = next_run - datetime.now(timezone.utc)
+
+# Format countdown
+days_rem = time_remaining.days
+hours_rem, remainder = divmod(time_remaining.seconds, 3600)
+mins_rem, _ = divmod(remainder, 60)
+
+st.sidebar.markdown(f"### ⏳ Next Auto-Scan")
+st.sidebar.info(f"**In {days_rem}d {hours_rem}h {mins_rem}m**\n\n📅 {next_run.strftime('%d %b %H:%M UTC')}")
+
+if st.sidebar.checkbox("Manual Override (Debug)"):
+    if st.sidebar.button("Force Run Scan"):
+        with st.spinner("Scanning..."):
+            try:
+                if USE_INTERNAL_API:
+                     res = run_scan(3)
+                     if res.get("status") == "success":
+                         st.sidebar.success(f"Found {res.get('found')} signals.")
+                     else:
+                         st.sidebar.error(f"Failed: {res.get('log')}")
+            except Exception as e:
+                st.sidebar.error(f"Error: {e}")
 
 # Tabs
 tab1, tab_ai, tab_express, tab4 = st.tabs(["Signals", "AI Analyzer", "Express Editor", "Backtest"])
