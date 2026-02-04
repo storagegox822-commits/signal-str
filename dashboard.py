@@ -552,8 +552,16 @@ with tab_ai:
                                  st.session_state['last_analysis'] = item['analysis']
                                  st.session_state['analyzed_matches'] = item['matches']
                                  st.success("Loaded!")
+                             if c2.button(f"🗑️ Удалить", key=f"del_{idx}"):
+                                 if USE_INTERNAL_API:
+                                     delete_ai_history(DeleteHistoryRequest(timestamp=timestamp))
+                                     st.success("Deleted!")
+                                     import time
+                                     time.sleep(0.5)
+                                     st.rerun()
                                  
-
+             except Exception as e:
+                 st.error(f"History load error: {e}")
 
         # --- Status Tracking ---
         # Check AI History
@@ -573,35 +581,6 @@ with tab_ai:
                     if home in m_str and away in m_str:
                         return True
             return False
-
-        # Apply statuses
-        # This part assumes signals_df is defined somewhere above this block.
-        # If signals_df is not defined, this will cause an error.
-        # Based on the context, it seems this block is intended to be within a larger section
-        # where signals_df would be available. Assuming it's part of a larger `try` block
-        # or a section where `signals_df` is already created.
-        # For now, I'll place it as requested, assuming `signals_df` exists in scope.
-        # If this is a standalone insertion, `signals_df` would need to be initialized.
-        # Given the instruction, I'm inserting it directly.
-        # If `signals_df` is not defined, this will be a runtime error.
-        # I will add a placeholder for `signals_df` if it's not implicitly available.
-        # However, the instruction implies it's part of an existing flow.
-        # Let's assume `signals_df` is available from a previous step in the `tab_ai` context.
-        # If not, the user will need to adjust.
-
-        # Placeholder for signals_df if it's not implicitly available from the context
-        # For the purpose of this edit, I'm assuming it's available.
-        # If this code is meant to be placed after a section that generates `signals_df`,
-        # then this is correct. If not, `signals_df` would be undefined.
-        # The instruction implies it's part of a larger flow.
-        # I will not add a placeholder, as it would be an "unrelated edit".
-
-        # signals_df['🤖 AI'] = signals_df.apply(lambda x: '✅' if check_in_history(x['Home'], x['Away'], ai_hist) else '❌', axis=1)
-        # signals_df['📝 Exp'] = signals_df.apply(lambda x: '✅' if check_in_history(x['Home'], x['Away'], bet_hist) else '❌', axis=1)
-
-        # # Reorder columns to show statuses first
-        # cols = ['🤖 AI', '📝 Exp'] + [c for c in signals_df.columns if c not in ['🤖 AI', '📝 Exp']]
-        # signals_df = signals_df[cols]
 
         # st.dataframe(signals_df, use_container_width=True)
         
