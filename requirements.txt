@@ -11,3 +11,5 @@ beautifulsoup4
 html5lib
 python-dotenv
 paramiko
+selenium
+undetected-chromedriver

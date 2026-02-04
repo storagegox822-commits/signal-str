@@ -5,7 +5,39 @@ import json
 
 # config
 st.set_page_config(page_title="Signalizer 3.5 Dashboard", layout="wide")
-API_URL = "http://localhost:8000"
+
+# --- CROSS-ENV COMPATIBILITY ---
+# Bridge Streamlit Secrets to OS Environ (for Streamlit Cloud)
+try:
+    if hasattr(st, "secrets"):
+        import os
+        for k, v in st.secrets.items():
+            # Handle nested secrets possibly? usually flat for env vars
+            if isinstance(v, str) and k not in os.environ:
+                os.environ[k] = v
+except Exception as e:
+    pass # Ignore if no secrets
+
+# --- MONOLITHIC IMPORTS ---
+# Import logic directly from app/main.py to run without separate backend
+try:
+    from app.main import (
+        load_signals, 
+        run_scan, 
+        analyze_express, 
+        save_history, 
+        notify_telegram,
+        get_history,
+        delete_history,
+        AnalyzeRequest,
+        HistoryItem,
+        NotifyRequest, 
+        DeleteHistoryRequest
+    )
+    USE_INTERNAL_API = True
+except ImportError:
+    USE_INTERNAL_API = False
+    st.error("❌ Could not import backend logic. Ensure 'app/main.py' exists.")
 
 st.title("⚽ Signalizer 3.5 Dashboard")
 st.markdown("Automated Under 3.5 Opponent Analysis")
@@ -16,13 +48,19 @@ days = st.sidebar.slider("Scan Days Ahead", 1, 14, 7)
 if st.sidebar.button("Run Scan"):
     with st.spinner("Scanning leagues..."):
         try:
-            res = requests.post(f"{API_URL}/scan/{days}")
-            if res.status_code == 200:
-                st.sidebar.success(f"Scan complete! Found {res.json()['found']} signals.")
+            if USE_INTERNAL_API:
+                 # Direct call
+                 res = run_scan(days)
+                 # run_scan returns dict
+                 if res.get("status") == "success":
+                     st.sidebar.success(f"Scan complete! Found {res.get('found')} signals.")
+                 else:
+                     st.sidebar.error(f"Scan failed: {res.get('log')}")
             else:
-                st.sidebar.error(f"Scan failed: {res.text}")
-        except:
-            st.sidebar.error("API is offline.")
+                 # Fallback (Legacy)
+                 requests.post(f"http://localhost:8000/scan/{days}")
+        except Exception as e:
+            st.sidebar.error(f"Scan Error: {e}")
 
 # Tabs
 tab1, tab_ai, tab_express, tab4 = st.tabs(["Signals", "AI Analyzer", "Express Editor", "Backtest"])
@@ -30,31 +68,22 @@ tab1, tab_ai, tab_express, tab4 = st.tabs(["Signals", "AI Analyzer", "Express Ed
 with tab1:
     st.subheader("Current Signals")
     
-    # Try local cache first (Direct Read for reliability)
+    # Try local cache/Direct Read
     import os
     signals_df = pd.DataFrame()
-    loaded_source = "API"
+    loaded_source = "Internal"
     
-    if os.path.exists("under35_signals_5leagues_ru.csv"):
+    # DIRECT LOAD
+    if USE_INTERNAL_API:
         try:
-            signals_df = pd.read_csv("under35_signals_5leagues_ru.csv")
-            loaded_source = "Local Cache (RU)"
-        except Exception as e:
-            st.error(f"Error reading local cache: {e}")
-            
-    # Fallback to API if local failed or empty
-    if signals_df.empty:
-        try:
-            data = requests.get(f"{API_URL}/signals").json()
+            data = load_signals()
             if data:
-                signals_df = pd.DataFrame(data)
-                loaded_source = "API"
-        except:
-             st.error("Could not connect to API")
-
+                 signals_df = pd.DataFrame(data)
+        except Exception as e:
+            st.error(f"Error loading signals: {e}")
+    
     if not signals_df.empty:
         st.dataframe(signals_df, use_container_width=True)
-        st.caption(f"Source: {loaded_source}")
     else:
         st.info("No signals found. Try running a scan.")
 
@@ -245,7 +274,8 @@ with tab_express:
         if st.button("💾 Save to History"):
              import time
              try:
-                 payload = {
+                 # Prepare Item
+                 item_data = {
                      "date": st.session_state['express_data'].get('m1_meta',{}).get('date', 'Today'),
                      "matches": [m1, m2, m3],
                      "outcomes": {"m1": o1, "m2": o2, "m3": o3},
@@ -254,8 +284,17 @@ with tab_express:
                      "roi_calculation": st.session_state.get('last_roi', "N/A"),
                      "timestamp": time.time()
                  }
-                 requests.post(f"{API_URL}/save_history", json=payload)
-                 st.success("Saved to Backtest/History!")
+                 
+                 if USE_INTERNAL_API:
+                     item = HistoryItem(**item_data)
+                     res = save_history(item)
+                     if res.get("status") == "saved":
+                         st.success("Saved to Backtest/History!")
+                     else:
+                         st.error("Error saving history")
+                 else:
+                     requests.post(f"{API_URL}/save_history", json=item_data)
+                     st.success("Saved to Backtest/History!")
              except Exception as e:
                  st.error(f"Save failed: {e}")
 
@@ -609,7 +648,11 @@ with tab_express:
                      
                      # 3. Send to Telegram
                      msg = f"🆕 **Новый Экспресс**\n📅 {st.session_state['express_data'].get('m1_meta',{}).get('date', 'Today')}\n\n🌍 **Ссылка:** {PUBLIC_URL}"
-                     requests.post(f"{API_URL}/notify_telegram", json={"message": msg})
+                     
+                     if USE_INTERNAL_API:
+                         notify_telegram(NotifyRequest(message=msg))
+                     else:
+                         requests.post(f"{API_URL}/notify_telegram", json={"message": msg})
                      
                      st.success(f"Загружено! Ссылка отправлена в бот: {PUBLIC_URL}")
                      st.markdown(f"[Открыть Посстоянную Ссылку]({PUBLIC_URL})")
@@ -659,23 +702,35 @@ with tab_ai:
                          matches.append(line)
                 
                 try:
-                    # Call Backend API
-                    payload = {"matches": matches, "model": model_choice}
-                    res = requests.post(f"{API_URL}/analyze_express", json=payload)
+                    analysis_text = ""
                     
-                    if res.status_code == 200:
-                        res_data = res.json()
-                        analysis_text = res_data["analysis"]
+                    if USE_INTERNAL_API:
+                         # Internal Call
+                         from app.main import AnalyzeRequest
+                         req = AnalyzeRequest(matches=matches, model=model_choice)
+                         res = analyze_express(req)
+                         analysis_text = res.get("analysis", "")
+                         if "Error" in analysis_text:
+                             st.error(analysis_text)
+                             analysis_text = "" # Fail
+                    else:
+                        # Legacy API
+                        payload = {"matches": matches, "model": model_choice}
+                        res = requests.post(f"{API_URL}/analyze_express", json=payload)
+                        if res.status_code == 200:
+                            analysis_text = res.json()["analysis"]
+                        else:
+                            st.error(f"Ошибка анализа: {res.text}")
+
+                    if analysis_text:
                         st.success("✅ Анализ Завершен")
                         st.markdown(analysis_text)
                         
                         # Store analysis in session state for parsing
                         st.session_state['last_analysis'] = analysis_text
                         st.session_state['analyzed_matches'] = matches
-                    else:
-                        st.error(f"Ошибка анализа: {res.text}")
                 except Exception as e:
-                    st.error(f"Ошибка сети: {e}")
+                    st.error(f"Ошибка: {e}")
 
         # Transfer Button Logic
         if 'last_analysis' in st.session_state:
@@ -824,7 +879,11 @@ with tab4:
         st.rerun()
 
     if col2.button("🗑️ Удалить ВСЕ", type="primary"):
-        requests.post(f"{API_URL}/delete_history", json={"delete_all": True})
+        if USE_INTERNAL_API:
+             delete_history(DeleteHistoryRequest(delete_all=True))
+        else:
+             requests.post(f"{API_URL}/delete_history", json={"delete_all": True})
+             
         st.success("История очищена!")
         import time
         time.sleep(1)
@@ -832,34 +891,41 @@ with tab4:
 
     try:
         # Use new History endpoint
-        res = requests.get(f"{API_URL}/get_history")
-        if res.status_code == 200:
-            history = res.json()
-            if not history:
-                st.info("История пуста.")
-            else:
-                # Show newest first
-                for i, item in enumerate(reversed(history)):
-                    # Use columns inside expander header or just custom layout
-                    cols = st.columns([0.9, 0.1])
-                    title = f"📅 {item.get('date','Dateless')} | 🔢 {len(item.get('matches',[]))} Матчей (ROI: {item.get('roi_calculation','?')})"
-                    
-                    with st.expander(title):
-                         c1, c2 = st.columns(2)
-                         c1.write("**Матчи:**")
-                         for m in item.get('matches', []):
-                             c1.write(f"- {m}")
-                         
-                         c2.write("**Кэфы (ROI):**")
-                         c2.info(item.get('roi_calculation', 'N/A'))
-                         
-                         st.json(item) # Show full data debug
-                         
-                         if st.button("❌ Удалить этот анализ", key=f"del_{item.get('timestamp', i)}"):
-                             requests.post(f"{API_URL}/delete_history", json={"timestamp": item.get('timestamp')})
-                             st.success("Удалено!")
-                             st.rerun()
+        history = []
+        if USE_INTERNAL_API:
+             history = get_history()
         else:
-             st.error("Ошибка загрузки истории")
+             res = requests.get(f"{API_URL}/get_history")
+             if res.status_code == 200:
+                 history = res.json()
+                 
+        if not history:
+            st.info("История пуста.")
+        else:
+            # Show newest first
+            for i, item in enumerate(reversed(history)):
+                # Use columns inside expander header or just custom layout
+                cols = st.columns([0.9, 0.1])
+                title = f"📅 {item.get('date','Dateless')} | 🔢 {len(item.get('matches',[]))} Матчей (ROI: {item.get('roi_calculation','?')})"
+                
+                with st.expander(title):
+                     c1, c2 = st.columns(2)
+                     c1.write("**Матчи:**")
+                     for m in item.get('matches', []):
+                         c1.write(f"- {m}")
+                     
+                     c2.write("**Кэфы (ROI):**")
+                     c2.info(item.get('roi_calculation', 'N/A'))
+                     
+                     st.json(item) # Show full data debug
+                     
+                     if st.button("❌ Удалить этот анализ", key=f"del_{item.get('timestamp', i)}"):
+                         if USE_INTERNAL_API:
+                             delete_history(DeleteHistoryRequest(timestamp=item.get('timestamp')))
+                         else:
+                             requests.post(f"{API_URL}/delete_history", json={"timestamp": item.get('timestamp')})
+                             
+                         st.success("Удалено!")
+                         st.rerun()
     except Exception as e:
-        st.write("Нет данных или API недоступен")
+        st.write(f"Нет данных или ошибка: {e}")
