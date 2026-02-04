@@ -6,6 +6,26 @@ import json
 # config
 st.set_page_config(page_title="Signalizer 3.5 Dashboard", layout="wide")
 
+# --- AUTHENTICATION ---
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+def check_login():
+    if st.session_state.get("username_input") == "timbot" and st.session_state.get("password_input") == "Ae32c1c5":
+        st.session_state.authenticated = True
+    else:
+        st.error("❌ Неверный логин или пароль")
+
+if not st.session_state.authenticated:
+    st.title("🔒 Вход в систему")
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.text_input("Логин", key="username_input")
+        st.text_input("Пароль", type="password", key="password_input")
+        st.button("Войти", on_click=check_login)
+    st.stop() # Stop execution until logged in
+# ----------------------
+
 # --- CROSS-ENV COMPATIBILITY ---
 # Bridge Streamlit Secrets to OS Environ (for Streamlit Cloud)
 try:
