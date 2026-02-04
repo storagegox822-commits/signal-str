@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signalizer 3.5 Dashboard (Static)</title>
+    <style>
+        :root {
+            --bg-body: #0e1117;
+            --bg-sidebar: #262730;
+            --text-primary: #fafafa;
+            --text-secondary: #c0c0c0;
+            --accent: #ff4b4b;
+            --card-bg: #1c1e24;
+            --border: #444;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Source Sans Pro", sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background-color: var(--bg-sidebar);
+            padding: 20px;
+            border-right: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            padding: 40px;
+            overflow-y: auto;
+        }
+
+        /* UI Components */
+        h1,
+        h2,
+        h3 {
+            margin-top: 0;
+            font-weight: 600;
+        }
+
+        .stButton {
+            background-color: transparent;
+            border: 1px solid var(--text-secondary);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 100%;
+        }
+
+        .stButton:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .stButton.primary {
+            background-color: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .stButton.primary:hover {
+            opacity: 0.9;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 15px 0;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            background: #0e1117;
+            color: white;
+            box-sizing: border-box;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-weight: bold;
+        }
+
+        .tab.active {
+            border-bottom: 3px solid var(--accent);
+            color: var(--text-primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Tables and Cards */
+        .card {
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            color: var(--text-secondary);
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--text-primary);
+        }
+
+        /* Custom for Express Editor */
+        .checklist-item {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+        }
+
+        .checklist-item.checked label {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <h2>Controls</h2>
+        <label>Scan Days Ahead</label>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <input type="range" min="1" max="14" value="7"
+                oninput="document.getElementById('daysVal').innerText = this.value">
+            <span id="daysVal">7</span>
+        </div>
+        <button class="stButton primary" onclick="alert('API Scan not connected via Static HTML')">Run Scan</button>
+        <br><br>
+        <div class="card">
+            <h4>Status</h4>
+            <div style="font-size: 0.8em; color: green;">System: Online (Static)</div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <h1>⚽ Signalizer 3.5 Dashboard</h1>
+        <p>Automated Under 3.5 Opponent Analysis (Static Web View)</p>
+
+        <!-- TABS -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('t-signals', this)">Signals</div>
+            <div class="tab" onclick="switchTab('t-ai', this)">AI Analyzer</div>
+            <div class="tab" onclick="switchTab('t-express', this)">Express Editor</div>
+            <div class="tab" onclick="switchTab('t-history', this)">Backtest</div>
+        </div>
+
+        <!-- TAB CONTENT: SIGNALS -->
+        <div id="t-signals" class="tab-content active">
+            <h3>Current Signals</h3>
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>League</th>
+                            <th>Match</th>
+                            <th>Prediction</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>2026-02-02</td>
+                            <td>ARG Liga</td>
+                            <td>Gimnasia vs Aldosivi</td>
+                            <td>Under 3.5 (82%)</td>
+                        </tr>
+                        <tr>
+                            <td>2026-02-03</td>
+                            <td>ARG Liga</td>
+                            <td>Tigre vs Racing</td>
+                            <td>Under 3.5 (79%)</td>
+                        </tr>
+                        <!-- Static Sample Data -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: AI ANALYZER -->
+        <div id="t-ai" class="tab-content">
+            <h3>🤖 AI Analyzer</h3>
+            <div class="card">
+                <label>Матчи (по одному на строку):</label>
+                <textarea rows="5" placeholder="Team A vs Team B..."></textarea>
+                <select>
+                    <option>Perplexity Sonar</option>
+                    <option>GPT-4o</option>
+                </select>
+                <button class="stButton primary">🚀 Анализировать (API Req)</button>
+            </div>
+            <div class="card" style="background: #2b303b;">
+                <pre style="color: #98c379;">
+🤖 AI Output Preview:
+1. Match A: 1:1, Even
+2. Match B: 0:0, Even
+... (Requires Backend Connection)
+                </pre>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: EXPRESS EDITOR -->
+        <div id="t-express" class="tab-content">
+            <h3>🛠️ Express Editor (27 Variations)</h3>
+            <p>Create a system from 3 matches.</p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                <div><label>Match 1</label><input type="text" id="m1" value="Gimnasia vs Aldosivi"></div>
+                <div><label>Match 2</label><input type="text" id="m2" value="Defensa vs Estudiantes"></div>
+                <div><label>Match 3</label><input type="text" id="m3" value="Tigre vs Racing"></div>
+            </div>
+
+            <button class="stButton primary" style="margin: 20px 0;" onclick="generateVariations()">Generate
+                Variations</button>
+
+            <!-- ROI Calc -->
+            <div class="card">
+                <h4>💰 ROI Calculator</h4>
+                <div style="display: flex; gap: 10px;">
+                    <input type="number" placeholder="Stake" value="1000">
+                    <button class="stButton">Calculate</button>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="express-results" style="display:none;">
+                <h4>🔑 Легенда</h4>
+                <div class="card" id="legend-content"></div>
+
+                <h4>📋 Чек-лист</h4>
+                <div id="checklist-container"></div>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: BACKTEST -->
+        <div id="t-history" class="tab-content">
+            <h3>📚 История (Local Session)</h3>
+            <div class="card">
+                No history in static mode.
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SCRIPTS -->
+    <script>
+        function switchTab(id, el) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById(id).classList.add('active');
+        }
+
+        /* EXPRESS LOGIC */
+        const OUTCOMES = ["П1", "X", "П2"];
+        // In your dashboard logic it was outcomes like "Score 1:0", etc. 
+        // For static demo we default to "1X2" logic OR generic placeholders.
+        // Let's implement the generic logic from previous HTML.
+
+        function generateVariations() {
+            const m1 = document.getElementById('m1').value;
+            const m2 = document.getElementById('m2').value;
+            const m3 = document.getElementById('m3').value;
+
+            // Generate 27
+            // Logic: Outcome A (3 variants), Outcome B (3), Outcome C (3)
+            // Simplified for demo: 1, X, 2
+
+            const vars = [];
+            const combs = ["1", "X", "2"];
+            for (let a of combs) {
+                for (let b of combs) {
+                    for (let c of combs) {
+                        vars.push([a, b, c]);
+                    }
+                }
+            }
+
+            // Render Legend
+            document.getElementById('legend-content').innerHTML = `
+                <div>1️⃣ ${m1}</div>
+                <div>2️⃣ ${m2}</div>
+                <div>3️⃣ ${m3}</div>
+            `;
+
+            // Render Checklist
+            const cont = document.getElementById('checklist-container');
+            cont.innerHTML = "";
+            vars.forEach((v, i) => {
+                const row = document.createElement('div');
+                row.className = 'checklist-item';
+                row.innerHTML = `
+                    <input type="checkbox" onchange="this.parentElement.classList.toggle('checked')">
+                    <span style="margin-left: 10px;">Var #${i + 1}: ${v[0]} | ${v[1]} | ${v[2]}</span>
+                `;
+                cont.appendChild(row);
+            });
+
+            document.getElementById('express-results').style.display = 'block';
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Express Editor (Web)</title>
+    <style>
+        :root {
+            --bg-color: #0e1117;
+            --text-color: #fafafa;
+            --accent-color: #ff4b4b;
+            --card-bg: #262730;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1, h2 { font-weight: 600; }
+        .container {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 15px 0;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background: #1c1e24;
+            color: white;
+            box-sizing: border-box; 
+        }
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+        }
+        button:hover { opacity: 0.9; }
+        .checklist-item {
+            padding: 10px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+        }
+        .checklist-item input { margin-right: 15px; width: 20px; height: 20px; }
+        .checklist-item label { cursor: pointer; }
+        .completed { text-decoration: line-through; opacity: 0.6; }
+        #results { margin-top: 20px; display: none; }
+        .legend { font-size: 0.9em; margin-bottom: 10px; color: #ddd; }
+    </style>
+</head>
+<body>
+
+    <h1>🛠️ Express Editor (27 Variations)</h1>
+
+    <div class="container">
+        <h3>Матчи</h3>
+        <label>Матч 1 (1X2):</label>
+        <input type="text" id="m1" placeholder="Team A vs Team B" value="Team A vs Team B">
+        
+        <label>Матч 2 (1X2):</label>
+        <input type="text" id="m2" placeholder="Team C vs Team D" value="Team C vs Team D">
+        
+        <label>Матч 3 (1X2):</label>
+        <input type="text" id="m3" placeholder="Team E vs Team F" value="Team E vs Team F">
+        
+        <button onclick="generate()">🧩 Сгенерировать Варианты</button>
+    </div>
+
+    <div id="results" class="container">
+        <h3>📋 Чек-лист (27)</h3>
+        <p class="legend" id="legendText"></p>
+        <div id="list"></div>
+        <br>
+        <button onclick="sendTelegram()" style="background-color: #0088cc;">📲 Отправить в Telegram</button>
+    </div>
+
+    <script>
+        const OUTCOMES = ["П1", "X", "П2"];
+
+        function shortName(name) {
+            return name.split(" vs ")[0].substring(0, 10).trim() + "..";
+        }
+
+        function generate() {
+            const m1 = document.getElementById('m1').value;
+            const m2 = document.getElementById('m2').value;
+            const m3 = document.getElementById('m3').value;
+            
+            const n1 = shortName(m1);
+            const n2 = shortName(m2);
+            const n3 = shortName(m3);
+
+            let variations = [];
+            // Cartesian Product of 1X2 for 3 matches
+            for (let o1 of OUTCOMES) {
+                for (let o2 of OUTCOMES) {
+                    for (let o3 of OUTCOMES) {
+                        variations.push([o1, o2, o3]);
+                    }
+                }
+            }
+
+            const listDiv = document.getElementById('list');
+            listDiv.innerHTML = "";
+            
+            document.getElementById('legendText').innerText = `1️⃣ ${m1} | 2️⃣ ${m2} | 3️⃣ ${m3}`;
+            
+            variations.forEach((v, index) => {
+                const betStr = `1️⃣ ${n1}: ${v[0]} | 2️⃣ ${n2}: ${v[1]} | 3️⃣ ${n3}: ${v[2]}`;
+                const div = document.createElement('div');
+                div.className = 'checklist-item';
+                div.innerHTML = `
+                    <input type="checkbox" id="v${index}" onchange="toggleStrike(this)">
+                    <label for="v${index}">${index + 1}. ${betStr}</label>
+                `;
+                listDiv.appendChild(div);
+            });
+
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function toggleStrike(cb) {
+            const label = cb.nextElementSibling;
+            if (cb.checked) {
+                label.classList.add('completed');
+            } else {
+                label.classList.remove('completed');
+            }
+        }
+
+        function sendTelegram() {
+            // Since this is static, we can try to call the Telegram API directly if we dare expose token
+            // OR we just alert. Given user asked to "send URL to bot", maybe this button is just a dummy or 
+            // the user expects the python bot to listen? 
+            // I will make it just an alert for now as I cannot securely call from pure JS without CORS/Exposed Token.
+            // Unless I use a proxy. 
+            alert("Для отправки в телеграм с веба нужен бэкенд. Скопируйте ссылку!");
+        }
+    </script>
+</body>
+</html>

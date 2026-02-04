@@ -1,0 +1,272 @@
+[
+    {
+        "date": "02.02 22:00 \u041c\u0421\u041a",
+        "matches": [
+            "Gimnasia La Plata Aldosivi Mar del Plata",
+            "Defensa y Justicia Estudiantes",
+            "CA Tigre BA Racing Club"
+        ],
+        "outcomes": {
+            "m1": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 1:0",
+                "\u0421\u0447\u0435\u0442 2:1"
+            ],
+            "m2": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 0:1",
+                "\u0421\u0447\u0435\u0442 2:1"
+            ],
+            "m3": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 1:2",
+                "\u0421\u0447\u0435\u0442 2:1"
+            ]
+        },
+        "odds": {
+            "m1": [
+                1.9,
+                1.9,
+                1.9
+            ],
+            "m2": [
+                1.9,
+                1.9,
+                1.9
+            ],
+            "m3": [
+                1.9,
+                1.9,
+                1.9
+            ]
+        },
+        "variations_count": 27,
+        "roi_calculation": "Min 6859 / Max 6859",
+        "timestamp": 1770048037.989454
+    },
+    {
+        "date": "02.02 22:00 \u041c\u0421\u041a",
+        "matches": [
+            "Gimnasia La Plata Aldosivi Mar del Plata",
+            "Defensa y Justicia Estudiantes",
+            "CA Tigre BA Racing Club"
+        ],
+        "outcomes": {
+            "m1": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 1:0",
+                "\u0421\u0447\u0435\u0442 2:1"
+            ],
+            "m2": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 2:1",
+                "\u0421\u0447\u0435\u0442 0:1"
+            ],
+            "m3": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 2:1",
+                "\u0421\u0447\u0435\u0442 1:0"
+            ]
+        },
+        "odds": {
+            "m1": [
+                1.9,
+                1.9,
+                1.9
+            ],
+            "m2": [
+                1.9,
+                1.9,
+                1.9
+            ],
+            "m3": [
+                1.9,
+                1.9,
+                1.9
+            ]
+        },
+        "variations_count": 27,
+        "roi_calculation": "Min 6859 / Max 6859",
+        "timestamp": 1770048487.95117
+    },
+    {
+        "date": "03.02 03:00 \u041c\u0421\u041a",
+        "matches": [
+            "Argentinos Juniors Belgrano de Cordoba",
+            "Union Santa Fe Gimnasia Mendoza",
+            "Banfield Estudiantes de R\u00edo Cuarto"
+        ],
+        "outcomes": {
+            "m1": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 1:0",
+                "\u0421\u0447\u0435\u0442 2:1"
+            ],
+            "m2": [
+                "\u0421\u0447\u0435\u0442 1:0",
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 2:1"
+            ],
+            "m3": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 1:0",
+                "\u0421\u0447\u0435\u0442 2:1"
+            ]
+        },
+        "odds": {
+            "m1": [
+                1.9,
+                1.9,
+                1.9
+            ],
+            "m2": [
+                1.9,
+                1.9,
+                1.9
+            ],
+            "m3": [
+                1.9,
+                1.9,
+                1.9
+            ]
+        },
+        "variations_count": 27,
+        "roi_calculation": "Min 6859 / Max 6859",
+        "timestamp": 1770057410.339078
+    },
+    {
+        "date": "03.02 03:00 \u041c\u0421\u041a",
+        "matches": [
+            "Argentinos Juniors Belgrano de Cordoba",
+            "Union Santa Fe Gimnasia Mendoza",
+            "Banfield Estudiantes de R\u00edo Cuarto"
+        ],
+        "outcomes": {
+            "m1": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 1:0",
+                "\u0421\u0447\u0435\u0442 2:1"
+            ],
+            "m2": [
+                "\u0421\u0447\u0435\u0442 1:0",
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 2:1"
+            ],
+            "m3": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 1:0",
+                "\u0421\u0447\u0435\u0442 2:1"
+            ]
+        },
+        "odds": {
+            "m1": [
+                1.9,
+                1.9,
+                1.9
+            ],
+            "m2": [
+                1.9,
+                1.9,
+                1.9
+            ],
+            "m3": [
+                1.9,
+                1.9,
+                1.9
+            ]
+        },
+        "variations_count": 27,
+        "roi_calculation": "Min 6859 / Max 6859",
+        "timestamp": 1770057601.199984
+    },
+    {
+        "date": "04.02 03:15 \u041c\u0421\u041a",
+        "matches": [
+            "2026-02-04 03:15 (MSK) Independiente Rivadavia Sarmiento de Junin",
+            "2026-02-04 03:15 (MSK) Instituto de C\u00f3rdoba Lanus",
+            "2026-02-07 03:00 (MSK) Central C\u00f3rdoba Union Santa Fe"
+        ],
+        "outcomes": {
+            "m1": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 1:0",
+                "\u0421\u0447\u0435\u0442 2:1"
+            ],
+            "m2": [
+                "\u0421\u0447\u0435\u0442 0:1",
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 2:1"
+            ],
+            "m3": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 0:1",
+                "\u0421\u0447\u0435\u0442 1:0"
+            ]
+        },
+        "odds": {
+            "m1": [
+                1.9,
+                1.9,
+                1.9
+            ],
+            "m2": [
+                1.9,
+                1.9,
+                1.9
+            ],
+            "m3": [
+                1.9,
+                1.9,
+                1.9
+            ]
+        },
+        "variations_count": 27,
+        "roi_calculation": "Min 6859 / Max 6859",
+        "timestamp": 1770057677.042876
+    },
+    {
+        "date": "07.02 03:00 \u041c\u0421\u041a",
+        "matches": [
+            "2026-02-07 03:00 (MSK)\tCentral C\u00f3rdoba\tUnion Santa Fe",
+            "2026-02-07 23:00 (MSK)\tAldosivi Mar del Plata\tRosario Central",
+            "2026-02-08 00:00 (MSK)\tRacing Club\tArgentinos Juniors"
+        ],
+        "outcomes": {
+            "m1": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 0:1",
+                "\u0421\u0447\u0435\u0442 1:0"
+            ],
+            "m2": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 0:1",
+                "\u0421\u0447\u0435\u0442 2:1"
+            ],
+            "m3": [
+                "\u0427\u0415\u0422",
+                "\u0421\u0447\u0435\u0442 2:1",
+                "\u0421\u0447\u0435\u0442 1:0"
+            ]
+        },
+        "odds": {
+            "m1": [
+                1.9,
+                5.0,
+                5.0
+            ],
+            "m2": [
+                1.9,
+                5.0,
+                5.0
+            ],
+            "m3": [
+                1.9,
+                5.0,
+                5.0
+            ]
+        },
+        "variations_count": 27,
+        "roi_calculation": "Min 6859 / Max 125000",
+        "timestamp": 1770221071.3028889
+    }
+]

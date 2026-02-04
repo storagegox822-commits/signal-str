@@ -1,0 +1,13 @@
+pandas
+fastapi
+uvicorn
+streamlit
+aiogram
+requests
+soccerdata
+openai
+lxml
+beautifulsoup4
+html5lib
+python-dotenv
+paramiko
