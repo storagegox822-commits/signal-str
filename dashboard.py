@@ -44,6 +44,18 @@ st.markdown("Automated Under 3.5 Opponent Analysis")
 
 # Sidebar
 st.sidebar.header("Controls")
+
+# --- ENV VALIDATION ---
+missing_keys = []
+if "OPENAI_API_KEY" not in os.environ and "PERPLEXITY_API_KEY" not in os.environ:
+    missing_keys.append("AI Key (OpenAI or Perplexity)")
+if "TG_BOT_TOKEN" not in os.environ:
+    missing_keys.append("TG Bot Token")
+
+if missing_keys:
+    st.sidebar.warning(f"⚠️ Missing Secrets:\n" + "\n".join([f"- {k}" for k in missing_keys]))
+    st.sidebar.info("Add them in Streamlit Cloud -> Settings -> Secrets")
+# ----------------------
 days = st.sidebar.slider("Scan Days Ahead", 1, 14, 7)
 if st.sidebar.button("Run Scan"):
     with st.spinner("Scanning leagues..."):
