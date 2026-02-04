@@ -341,6 +341,10 @@ def delete_ai_history(req: DeleteHistoryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class DeleteHistoryRequest(BaseModel):
+    timestamp: float = None
+    delete_all: bool = False
+
 @app.post("/kelly")
 def calculate_kelly(req: KellyRequest):
     """
@@ -400,9 +404,6 @@ def save_history(item: HistoryItem):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-class DeleteHistoryRequest(BaseModel):
-    timestamp: float = None
-    delete_all: bool = False
 
 @app.post("/delete_history")
 def delete_history(req: DeleteHistoryRequest):
