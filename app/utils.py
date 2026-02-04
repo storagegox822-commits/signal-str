@@ -1,0 +1,225 @@
+import re
+import os
+import json
+import requests
+import paramiko
+from datetime import datetime
+
+def clean_match_name_html(m):
+     m = re.sub(r'\d{4}-\d{2}-\d{2}', '', m)
+     m = re.sub(r'\d{2}-\d{2}', '', m)
+     m = re.sub(r'\d{2}:\d{2}', '', m)
+     if " vs " in m: m = m.replace(" vs ", " - ")
+     return m.strip()
+
+def generate_variations(outcomes_list):
+    """
+    Generates 27 variations from 3 lists of 3 outcomes.
+    outcomes_list: [[o1a, o1b, o1c], [o2a...], [o3a...]]
+    Returns list of 27 tuples: [(o1a, o2a, o3a), ...]
+    """
+    import itertools
+    return list(itertools.product(*outcomes_list))
+
+def calculate_stakes(budget, variations_count):
+    """
+    Simple flat stake: Budget / Variations
+    """
+    if variations_count == 0: return []
+    stake = budget / variations_count
+    return [stake] * variations_count
+
+def generate_express_html(m1, m2, m3, variations, stakes, m1_meta, m2_meta, m3_meta, timestamp):
+    """
+    Generates the HTML snapshot content.
+    """
+    n1, n2, n3 = clean_match_name_html(m1), clean_match_name_html(m2), clean_match_name_html(m3)
+    
+    # Outcomes strings
+    # We don't have the "Expectation" strings passed here usually, but we can reconstruct or pass them differently.
+    # For simplicity, we'll just format the meta reasoning.
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Express Analysis #{timestamp}</title>
+   <style>
+       :root {{
+           --bg: #ffffff;
+           --text: #31333f;
+           --accent: #ff4b4b;
+           --card-bg: #f0f2f6; 
+           --border: #e0e0e0;
+       }}
+       body {{ 
+           font-family: "Source Sans Pro", -apple-system, sans-serif; 
+           background-color: var(--bg); 
+           color: var(--text); 
+           padding: 20px; 
+           max-width: 900px; 
+           margin: 0 auto; 
+       }}
+       h1, h2, h3 {{ color: #0e1117; font-weight: 600; }}
+       
+       /* Legend Styles */
+       .legend-card {{
+           background-color: #e8f4f9; 
+           border-radius: 8px;
+           padding: 15px;
+           margin-bottom: 15px;
+           border: 1px solid #d1e4ee;
+       }}
+       .match-header {{
+           font-weight: bold;
+           color: #0068c9;
+           margin-bottom: 8px;
+           display: flex;
+           align-items: center;
+           gap: 10px;
+       }}
+       .match-info {{ margin-bottom: 5px; font-size: 0.95em; }}
+       .icon {{ font-size: 1.2em; }}
+       
+       /* Checklist Styles */
+       .checklist-container {{
+           margin-top: 30px;
+       }}
+       .checklist-item {{
+           padding: 10px 0;
+           border-bottom: 1px solid #eee;
+           display: flex;
+           align-items: center;
+           transition: 0.2s;
+       }}
+       .checklist-item:hover {{ background-color: #f9f9f9; }}
+       .checklist-item input[type="checkbox"] {{
+           width: 20px;
+           height: 20px;
+           margin-right: 15px;
+           cursor: pointer;
+           accent-color: var(--accent);
+       }}
+       .checklist-label {{
+           font-size: 1em;
+           cursor: pointer;
+           line-height: 1.4;
+       }}
+       .checklist-item.checked .checklist-label {{
+           text-decoration: line-through;
+           color: #888;
+       }}
+       .var-badge {{
+           font-weight: bold;
+           color: #555;
+           margin-right: 5px;
+       }}
+       .team-tag {{
+           background: #eee;
+           padding: 2px 6px;
+           border-radius: 4px;
+           font-size: 0.85em;
+           margin: 0 4px;
+       }}
+       .stake-tag {{
+           margin-left: 10px;
+           font-weight: bold;
+           color: #2e7d32;
+           background: #e8f5e9;
+           padding: 2px 8px;
+           border-radius: 4px;
+       }}
+   </style>
+</head>
+<body>
+   <h1>ℹ️ Легенда Матчей:</h1>
+   
+   <div class="legend-card">
+       <div class="match-header"><span class="icon">1️⃣</span> {m1} | 📅 {m1_meta.get('date', '')}</div>
+       <div class="match-info">📝 <strong>Сценарий:</strong> {m1_meta.get('reason', 'N/A')}</div>
+   </div>
+   <div class="legend-card">
+       <div class="match-header"><span class="icon">2️⃣</span> {m2} | 📅 {m2_meta.get('date', '')}</div>
+       <div class="match-info">📝 <strong>Сценарий:</strong> {m2_meta.get('reason', 'N/A')}</div>
+   </div>
+   <div class="legend-card">
+       <div class="match-header"><span class="icon">3️⃣</span> {m3} | 📅 {m3_meta.get('date', '')}</div>
+       <div class="match-info">📝 <strong>Сценарий:</strong> {m3_meta.get('reason', 'N/A')}</div>
+   </div>
+
+   <div class="checklist-container">
+       <h2>📋 Чек-лист Вариантов (Отмечай сделанные):</h2>
+"""
+    for i, v in enumerate(variations):
+        stake_html = ""
+        if stakes and i < len(stakes):
+            stake_html = f'<span class="stake-tag">💰 {stakes[i]:.0f} ₽</span>'
+        
+        row_html = f"""
+       <div class="checklist-item" id="row_{i}">
+          <input type="checkbox" onclick="toggleRow({i})">
+          <label class="checklist-label" onclick="toggleRow({i})">
+             <span class="var-badge">В{i+1}:</span> 
+             <span class="team-tag">1️⃣ {n1}</span> <b>{v[0]}</b> | 
+             <span class="team-tag">2️⃣ {n2}</span> <b>{v[1]}</b> | 
+             <span class="team-tag">3️⃣ {n3}</span> <b>{v[2]}</b>
+             {stake_html}
+          </label>
+       </div>
+       """
+        html_content += row_html
+
+    html_content += """
+   </div>
+   <script>
+       function toggleRow(i) {
+           const row = document.getElementById("row_" + i);
+           const checkbox = row.querySelector("input[type='checkbox']");
+           if (event.target !== checkbox) checkbox.checked = !checkbox.checked;
+           if (checkbox.checked) row.classList.add("checked");
+           else row.classList.remove("checked");
+       }
+   </script>
+</body>
+</html>
+"""
+    return html_content
+
+def upload_to_beget(filename, content):
+    """
+    Uploads HTML to Beget via SFTP.
+    """
+    HOST = 'ttimbah0.beget.tech'
+    USER = 'ttimbah0'
+    PASS = '@@Ae32c1c5'
+    REMOTE_DIR = '/home/t/ttimbah0/dev.5na5.ru/public_html/project/expbeg/snapshots'
+    PUBLIC_URL = f"http://dev.5na5.ru/project/expbeg/snapshots/{filename}"
+    
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(HOST, username=USER, password=PASS)
+        
+        ssh.exec_command(f"mkdir -p {REMOTE_DIR}")
+        
+        sftp = ssh.open_sftp()
+        with sftp.open(f"{REMOTE_DIR}/{filename}", "w") as f:
+            f.write(content)
+        sftp.close()
+        ssh.close()
+        return PUBLIC_URL
+    except Exception as e:
+        print(f"Upload Error: {e}")
+        return None
+
+def send_telegram_message(token, chat_id, message):
+    if not token or not chat_id: return False
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": message, "parse_mode": "Markdown"}
+    try:
+        requests.post(url, json=payload)
+        return True
+    except:
+        return False
