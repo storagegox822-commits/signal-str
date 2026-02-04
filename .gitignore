@@ -91,3 +91,6 @@ logs/
 # Local data/cache
 under35_signals_5leagues_ru.csv
 odds_cache.db
+
+# Streamlit
+.streamlit/secrets.toml
