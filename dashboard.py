@@ -345,7 +345,16 @@ with tab_top:
             c3.caption(badges)
             c4.write(f"**{row['Confidence Text']}**")
             c5.caption(f"{row.get('Probable Scores', '1:0, 1:1')}")
-            c6.caption(f"{row.get('H2H', '—')}")
+            
+            # H2H Column with Fallback to Odds API
+            h2h_val = row.get('H2H', '')
+            if not h2h_val or h2h_val == '—':
+                 real_odds = row.get('Odds', 0)
+                 if real_odds and real_odds > 0:
+                     h2h_val = f"Odds: {real_odds}"
+                 else:
+                     h2h_val = "—"
+            c6.caption(h2h_val)
             cols_date = row['Date'].split(' ')
             c7.write(f"{cols_date[0] if len(cols_date)>0 else row['Date']}")
             
@@ -614,13 +623,20 @@ with tab3:
         ed = st.session_state['express_data']
         
         # SELF-HEAL: Ensure "ЧЕТ" is in outcomes for safety
+        self_healed = False
         for key in ['outcomes_1', 'outcomes_2', 'outcomes_3']:
             if key in ed:
                 outcomes = ed[key]
                 if "ЧЕТ" not in outcomes and len(outcomes) >= 3:
                      outcomes[0] = "ЧЕТ" # Force replace first for max safety
                      ed[key] = outcomes
-                     st.session_state['express_data'] = ed # Update state
+                     self_healed = True
+        
+        if self_healed:
+             st.session_state['express_data'] = ed
+             # RECALCULATE ODDS to prevent mismatch
+             all_outs = ed['outcomes_1'] + ed['outcomes_2'] + ed['outcomes_3']
+             st.session_state['odds_data'] = [suggest_odds(o) for o in all_outs]
         
         default_m1 = ed['m1_name']
         default_m2 = ed['m2_name']
