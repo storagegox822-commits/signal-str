@@ -321,6 +321,43 @@ def apply_league_filters(row, profile, league_name, historical_df=None):
     
     return True
 
+def calculate_confidence(home_team, away_team, watchlist_badge, opp_stats, top_stats, league_name):
+    """Calculate confidence score 0-100 based on multiple factors"""
+    base = 70
+    
+    # 1. Watchlist bonus (0-15 points)
+    if watchlist_badge == '👁️ W':
+        base += 15  # Elite defensive team
+    elif watchlist_badge == '🔍 W':
+        base += 10  # Low-tier star with strong record
+    
+    # 2. Opponent form bonus (0-10 points)
+    if opp_stats:
+        opp_goals = opp_stats.get('last5_goals_scored', 999)
+        if opp_goals < 3:
+            base += 10  # Very weak attack (<0.6 goals/game)
+        elif opp_goals < 5:
+            base += 7   # Weak attack (<1.0 goals/game)
+        elif opp_goals < 7:
+            base += 4   # Moderate attack
+    
+    # 3. League tier bonus (0-5 points)
+    top_leagues = ['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1']
+    if league_name in top_leagues:
+        base += 5  # Top 5 leagues have more reliable data
+    
+    # 4. Top team defensive bonus (0-5 points)
+    if top_stats:
+        clean_sheets = top_stats.get('clean_sheets_last3', 0)
+        if clean_sheets >= 2:
+            base += 5  # Strong defensive form
+        elif clean_sheets == 1:
+            base += 3  # Moderate defense
+    
+    # 5. Cap at 99 (never 100%)
+    return min(base, 99)
+
+
 # ========================================
 # MAIN SCANNER
 # ========================================
@@ -412,6 +449,19 @@ def scan_5leagues(days_ahead=7):
                         away_cat, away_badge = get_watchlist_info(away_team)
                         watchlist_badge = home_badge or away_badge or "👁️ W"
                     
+                    # Get stats for confidence calculation
+                    top_team = home_team if home_team in config['team_top'] else away_team
+                    opponent = away_team if home_team in config['team_top'] else home_team
+                    
+                    opp_stats = calculate_team_stats(historical_df, opponent) if (historical_df is not None and not historical_df.empty) else None
+                    top_stats = calculate_team_stats(historical_df, top_team) if (historical_df is not None and not historical_df.empty) else None
+                    
+                    # Calculate dynamic confidence
+                    confidence_score = calculate_confidence(
+                        home_team, away_team, watchlist_badge,
+                        opp_stats, top_stats, name
+                    )
+                    
                     # Fetch real odds
                     real_odds = None
                     if 'odds_key' in config:
@@ -427,7 +477,7 @@ def scan_5leagues(days_ahead=7):
                         'Away': away_team,
                         'Prediction': 'Under 3.5 Opponent Goals',
                         'Odds': round(signal_odds, 2),
-                        'Confidence': 'HIGH',
+                        'Confidence': confidence_score,  # Now a number 70-99
                         'Watchlist': watchlist_badge
                     })
     
