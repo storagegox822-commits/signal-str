@@ -72,15 +72,19 @@ def parse_analysis(text):
         # 1. Match Name
         lines = block.strip().split('\n')
         name_line = lines[0].strip()
-        # Remove date info if present on same line
+        # Remove date info if present
         name = name_line.split('📅')[0].strip()
+        # Clean markdown asterisks
+        name = name.replace('*', '').strip()
         
         # 2. Scores
         scores = []
         score_pattern = r'[\d]+[:][\d]+'
         for line in lines:
             if '💎' in line or '🔹' in line:
-                found = re.findall(score_pattern, line)
+                # Remove markdown before finding scores
+                clean_line = line.replace('*', '')
+                found = re.findall(score_pattern, clean_line)
                 if found:
                     scores.append(found[0])
         
@@ -518,24 +522,37 @@ with tab3:
                         # 2. Parse Results
                         parsed_matches = parse_analysis(analysis_text)
                         
-                        if len(parsed_matches) >= 3:
+                        if len(parsed_matches) > 0:
                             # 3. Auto-fill Editor
                             ed_data = {}
                             
                             # Match 1
-                            ed_data['m1_name'] = parsed_matches[0]['name']
+                            m1 = parsed_matches[0]
+                            ed_data['m1_name'] = m1['name']
                             ed_data['m1_meta'] = {'date': '', 'reason': 'AI Analysis'}
-                            ed_data['outcomes_1'] = parsed_matches[0]['scores']
+                            ed_data['outcomes_1'] = m1['scores']
                             
-                            # Match 2
-                            ed_data['m2_name'] = parsed_matches[1]['name']
-                            ed_data['m2_meta'] = {'date': '', 'reason': 'AI Analysis'}
-                            ed_data['outcomes_2'] = parsed_matches[1]['scores']
+                            # Match 2 (Optional)
+                            if len(parsed_matches) > 1:
+                                m2 = parsed_matches[1]
+                                ed_data['m2_name'] = m2['name']
+                                ed_data['m2_meta'] = {'date': '', 'reason': 'AI Analysis'}
+                                ed_data['outcomes_2'] = m2['scores']
+                            else:
+                                ed_data['m2_name'] = "Match 2 (Empty)"
+                                ed_data['m2_meta'] = {}
+                                ed_data['outcomes_2'] = ["1:0", "1:1", "0:0"]
                             
-                            # Match 3
-                            ed_data['m3_name'] = parsed_matches[2]['name']
-                            ed_data['m3_meta'] = {'date': '', 'reason': 'AI Analysis'}
-                            ed_data['outcomes_3'] = parsed_matches[2]['scores']
+                            # Match 3 (Optional)
+                            if len(parsed_matches) > 2:
+                                m3 = parsed_matches[2]
+                                ed_data['m3_name'] = m3['name']
+                                ed_data['m3_meta'] = {'date': '', 'reason': 'AI Analysis'}
+                                ed_data['outcomes_3'] = m3['scores']
+                            else:
+                                ed_data['m3_name'] = "Match 3 (Empty)"
+                                ed_data['m3_meta'] = {}
+                                ed_data['outcomes_3'] = ["1:0", "1:1", "0:0"]
                             
                             st.session_state['express_data'] = ed_data
                             
@@ -543,10 +560,10 @@ with tab3:
                             all_outs = ed_data['outcomes_1'] + ed_data['outcomes_2'] + ed_data['outcomes_3']
                             st.session_state['odds_data'] = [suggest_odds(o) for o in all_outs]
                             
-                            st.success("✅ Analysis Complete! Editor populated below.")
+                            st.success(f"✅ Analysis Complete! Found {len(parsed_matches)} matches.")
                             st.expander("View Full AI Analysis").markdown(analysis_text)
                         else:
-                            st.warning(f"Could not parse enough matches ({len(parsed_matches)} found). Raw output:")
+                            st.warning(f"Could not parse any matches. Raw output:")
                             st.text(analysis_text)
                     else:
                         st.error("No analysis returned.")
