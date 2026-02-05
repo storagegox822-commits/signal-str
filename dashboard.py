@@ -201,14 +201,22 @@ if USE_INTERNAL_API:
              import random
              
              def get_conf_num(row):
+                 # Use real confidence if available
+                 c = row.get('Confidence')
+                 if isinstance(c, (int, float)):
+                     return int(c)
+                 if isinstance(c, str) and c.isdigit():
+                     return int(c)
+                 
+                 # Fallback/Demo Logic
                  key = f"{row['Date']}_{row['Home']}_{row['Away']}"
                  if key in st.session_state['confidence_map']:
                      return st.session_state['confidence_map'][key]
                  
-                 # Logic
-                 if row.get('Confidence') == 'HIGH':
+                 if c == 'HIGH':
                      val = random.randint(85, 99)
                  else:
+                     # Identify newly scanned signals which might not be HIGH but are valid
                      val = random.randint(60, 79)
                  
                  st.session_state['confidence_map'][key] = val
@@ -247,14 +255,14 @@ if USE_INTERNAL_API:
 tab_top, tab3, tab4 = st.tabs(["🔥 Топ Сигналы", " Редактор Экспрессов", "🔙 Backtest"])
 
 with tab_top:
-    st.subheader("🔥 High-Confidence Signals (> 80%)")
+    st.subheader("🔥 Top Signals (Any Confidence)")
     
     # 1. Prepare Data
     if not signals_df.empty and 'Confidence Score' in signals_df.columns:
-        # Filter & Sort
-        df_top = signals_df[signals_df['Confidence Score'] >= 80].sort_values('Confidence Score', ascending=False)
+        # Filter & Sort - Show mostly everything found by scanner (> 60)
+        df_top = signals_df[signals_df['Confidence Score'] >= 60].sort_values('Confidence Score', ascending=False)
         
-        st.info(f"Найдено {len(df_top)} сигналов с уверенностью > 80%")
+        st.info(f"Найдено {len(df_top)} сигналов")
         
         # 2. Selection UI
         if 'top_selected' not in st.session_state: st.session_state['top_selected'] = []
