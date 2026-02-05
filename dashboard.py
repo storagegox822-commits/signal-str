@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import json
 import os
+import re
 
 # config
 st.set_page_config(page_title="Signalizer 3.5 Dashboard", layout="wide")
@@ -56,6 +57,43 @@ try:
 except ImportError:
     USE_INTERNAL_API = False
     st.error("❌ Could not import backend logic. Ensure 'app/main.py' exists.")
+
+def parse_analysis(text):
+    """
+    Parses OpenAI analysis text to extract matches and probable scores.
+    Returns: list of dicts [{'name': 'Team A vs Team B', 'scores': ['1:0', '1:1', '0:0']}]
+    """
+    blocks = text.split('⚽')
+    matches = []
+    
+    for block in blocks:
+        if not block.strip(): continue
+        
+        # 1. Match Name
+        lines = block.strip().split('\n')
+        name_line = lines[0].strip()
+        # Remove date info if present on same line
+        name = name_line.split('📅')[0].strip()
+        
+        # 2. Scores
+        scores = []
+        score_pattern = r'[\d]+[:][\d]+'
+        for line in lines:
+            if '💎' in line or '🔹' in line:
+                found = re.findall(score_pattern, line)
+                if found:
+                    scores.append(found[0])
+        
+        # Ensure we have at least 3 scores (pad with defaults)
+        while len(scores) < 3:
+            scores.append("1:1")
+            
+        matches.append({
+            'name': name,
+            'scores': scores[:3]
+        })
+        
+    return matches
 
 st.title("⚽ Signalizer 3.5 Dashboard")
 st.markdown("Automated Under 3.5 Opponent Analysis")
@@ -263,13 +301,14 @@ with tab_top:
             return ' '.join(badges) if badges else '—'
 
         # Header with Badges
-        c1, c2, c3, c4, c5, c6 = st.columns([1, 4, 2, 2, 2, 2])
+        c1, c2, c3, c4, c5, c6, c7 = st.columns([1, 4, 2, 2, 2, 2, 2])
         c1.markdown("**Sel**")
         c2.markdown("**Match**")
         c3.markdown("**Type**")
-        c4.markdown("**Prob. Scores**")
-        c5.markdown("**Conf**")
-        c6.markdown("**Date**")
+        c4.markdown("**Conf**")
+        c5.markdown("**Prob. Scores**")
+        c6.markdown("**H2H**")
+        c7.markdown("**Date**")
         
         # Cache badges to prevent changes on rerun
         if 'cached_badges' not in st.session_state:
@@ -284,7 +323,7 @@ with tab_top:
                 st.session_state['cached_badges'][match_str] = get_match_badges(row)
             badges = st.session_state['cached_badges'][match_str]
             
-            c1, c2, c3, c4, c5, c6 = st.columns([1, 4, 2, 2, 2, 2])
+            c1, c2, c3, c4, c5, c6, c7 = st.columns([1, 4, 2, 2, 2, 2, 2])
             if c1.checkbox("✓", key=f"top_{idx}", value=is_selected, label_visibility="collapsed"):
                 if not is_selected: toggle_select(match_str)
             else:
@@ -292,12 +331,27 @@ with tab_top:
                 
             c2.write(f"**{match_str}**")
             c3.caption(badges)
-            c4.caption(f"{row.get('Probable Scores', '1:0, 1:1')}")
-            c5.write(f"**{row['Confidence Text']}**")
+            c4.write(f"**{row['Confidence Text']}**")
+            c5.caption(f"{row.get('Probable Scores', '1:0, 1:1')}")
+            c6.caption(f"{row.get('H2H', '—')}")
             cols_date = row['Date'].split(' ')
-            c6.write(f"{cols_date[0] if len(cols_date)>0 else row['Date']}")
+            c7.write(f"{cols_date[0] if len(cols_date)>0 else row['Date']}")
             
         st.divider()
+        
+        # 3. Transfer Action
+        selected_count = len(st.session_state['top_selected'])
+        if selected_count > 0:
+            st.success(f"Выбрано {selected_count} матчей")
+            if st.button(f"🚀 Анализировать выбранные ({selected_count})", type="primary"):
+                # Format matches for input
+                matches_text = "\n".join(st.session_state['top_selected'])
+                st.session_state['matches_input'] = matches_text
+                st.session_state['active_tab'] = "analyzer" # Helper to switch tab if implemented or user manually switches
+                st.info("Матчи скопированы в Анализатор! Перейдите во вкладку 'Редактор Экспрессов'")
+                # Optional: Force rerun or logic to auto-run
+        else:
+            st.caption("Выберите матчи для анализа")
         
         # Badge Legend
         with st.expander("📖 Расшифровка Типов и Стратегия Выбора", expanded=True):
@@ -426,13 +480,90 @@ with tab_top:
         st.info("No signals data available.")
 
 with tab3:
+    st.subheader("🤖 AI Analyzer & Express Editor")
+    
+    # --- PHASE 1: INPUT & ANALYSIS ---
+    st.markdown("### 1. Match Selection")
+    
+    # Get input from Top Signals transfer
+    default_input = st.session_state.get('matches_input', "")
+    
+    col_in1, col_in2 = st.columns([3, 1])
+    with col_in1:
+        matches_text = st.text_area(
+            "Enter matches (one per line)", 
+            value=default_input, 
+            height=100,
+            placeholder="Team A vs Team B\nTeam C vs Team D\nTeam E vs Team F"
+        )
+    
+    with col_in2:
+        model_choice = st.radio("Model", ["GPT-4o-Mini", "Perplexity Sonar"], index=0)
+        analyze_btn = st.button("🚀 Analyze Matches", type="primary", use_container_width=True)
+        
+    if analyze_btn and matches_text:
+        if not USE_INTERNAL_API:
+            st.error("Backend logic not available.")
+        else:
+            with st.spinner(f"Analyzing with {model_choice}..."):
+                try:
+                    # 1. Call AI
+                    matches_list = [m.strip() for m in matches_text.split('\n') if m.strip()]
+                    req = AnalyzeRequest(matches=matches_list, model=model_choice)
+                    result = analyze_express(req)
+                    
+                    if "analysis" in result:
+                        analysis_text = result["analysis"]
+                        
+                        # 2. Parse Results
+                        parsed_matches = parse_analysis(analysis_text)
+                        
+                        if len(parsed_matches) >= 3:
+                            # 3. Auto-fill Editor
+                            ed_data = {}
+                            
+                            # Match 1
+                            ed_data['m1_name'] = parsed_matches[0]['name']
+                            ed_data['m1_meta'] = {'date': '', 'reason': 'AI Analysis'}
+                            ed_data['outcomes_1'] = parsed_matches[0]['scores']
+                            
+                            # Match 2
+                            ed_data['m2_name'] = parsed_matches[1]['name']
+                            ed_data['m2_meta'] = {'date': '', 'reason': 'AI Analysis'}
+                            ed_data['outcomes_2'] = parsed_matches[1]['scores']
+                            
+                            # Match 3
+                            ed_data['m3_name'] = parsed_matches[2]['name']
+                            ed_data['m3_meta'] = {'date': '', 'reason': 'AI Analysis'}
+                            ed_data['outcomes_3'] = parsed_matches[2]['scores']
+                            
+                            st.session_state['express_data'] = ed_data
+                            
+                            # Auto-Calculate Odds (Heuristic)
+                            all_outs = ed_data['outcomes_1'] + ed_data['outcomes_2'] + ed_data['outcomes_3']
+                            st.session_state['odds_data'] = [suggest_odds(o) for o in all_outs]
+                            
+                            st.success("✅ Analysis Complete! Editor populated below.")
+                            st.expander("View Full AI Analysis").markdown(analysis_text)
+                        else:
+                            st.warning(f"Could not parse enough matches ({len(parsed_matches)} found). Raw output:")
+                            st.text(analysis_text)
+                    else:
+                        st.error("No analysis returned.")
+                        
+                except Exception as e:
+                    st.error(f"Analysis failed: {e}")
+
+    st.divider()
+    
+    # --- PHASE 2: EDITOR ---
     st.subheader("🛠️ Express Editor (27 Variations)")
-    st.markdown("Create a system from 3 matches. Covers all combinations.")
+    st.markdown("Review outcomes and generate your system.")
 
     # Check for transferred data
     is_transferred = False
     if 'express_data' in st.session_state:
-        st.info("ℹ️ Using data from AI Analyzer")
+        st.info("ℹ️ Using data from Analysis")
         ed = st.session_state['express_data']
         
         # SELF-HEAL: Ensure "ЧЕТ" is in outcomes for safety
