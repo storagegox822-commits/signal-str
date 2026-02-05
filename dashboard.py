@@ -174,8 +174,12 @@ if USE_INTERNAL_API:
                  
              def get_prob_scores(row):
                  # Heuristic for "Under 3.5" signals: low scores
+                 # Use match name as seed for deterministic results
                  options = ["1:0, 2:0, 1:1", "1:1, 0:0, 1:0", "0:1, 0:2, 1:1", "2:1, 1:1, 1:0", "1:0, 0:0, 0:1"]
-                 return random.choice(options)
+                 match_str = f"{row['Home']}_{row['Away']}"
+                 # Use hash of match name to pick consistent option
+                 seed = hash(match_str) % len(options)
+                 return options[seed]
              
              def suggest_odds(outcome):
                  # Heuristic Odds Map
