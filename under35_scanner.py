@@ -113,22 +113,47 @@ odds_fetcher = OddsFetcher()
 
 def get_real_odds(odds_key, home_team, away_team):
     """Finds odds in cache for fuzzy matched teams"""
-    # Note: Team names in Odds API might differ from FBref/CSV.
-    # Simple fuzzy match or exact match attempt.
-    
     odds_data = odds_fetcher.get_odds(odds_key)
     if not odds_data:
-        return 0.0
-        
-    # Logic to find match in odds_data dict (event_id -> {home, away, draw})
-    # Since odds_api.py returns simplified dict, but we need team names.
-    # Refactoring odds_api.py return format might be needed if we don't have team names in the cache dict keys.
-    # Actually, odds_api.py _save_to_cache saves event_id. 
-    # We need to query by team name. 
+        return None
     
-    # IMPROVED LOGIC: Re-implement simple match lookup here or in OddsModule.
-    # For now, return placeholder if not found.
-    return 0.0
+    # Normalize team names for matching
+    home_normalized = home_team.lower().strip()
+    away_normalized = away_team.lower().strip()
+    
+    # Try exact and fuzzy matching
+    for event in odds_data:
+        event_home = event['home_team'].lower().strip()
+        event_away = event['away_team'].lower().strip()
+        
+        # Exact match
+        if event_home == home_normalized and event_away == away_normalized:
+            # Return average of home and away odds (for Under 3.5, we care about draw/low-scoring)
+            h2h = event.get('h2h', {})
+            home_odds = h2h.get('home', 0)
+            away_odds = h2h.get('away', 0)
+            draw_odds = h2h.get('draw', 0)
+            
+            # For Under 3.5, draw odds are most relevant
+            if draw_odds > 0:
+                return draw_odds
+            # Otherwise return average
+            if home_odds > 0 and away_odds > 0:
+                return (home_odds + away_odds) / 2
+        
+        # Fuzzy match (contains)
+        if (home_normalized in event_home or event_home in home_normalized) and \
+           (away_normalized in event_away or event_away in away_normalized):
+            h2h = event.get('h2h', {})
+            draw_odds = h2h.get('draw', 0)
+            if draw_odds > 0:
+                return draw_odds
+            home_odds = h2h.get('home', 0)
+            away_odds = h2h.get('away', 0)
+            if home_odds > 0 and away_odds > 0:
+                return (home_odds + away_odds) / 2
+    
+    return None  # No match found
 
 # ========================================
 # MAIN SCANNER
@@ -197,13 +222,103 @@ def load_fbref_fixtures(league_id, season='2425'):
 # ========================================
 # FILTER ENGINE
 # ========================================
-def calculate_team_stats(df, team_col='home_team'):
-    """Precompute stats для фильтров"""
-    # ... (rest of the function)
-    return df
+def calculate_team_stats(df, team_name):
+    """Calculate team performance stats from historical data"""
+    if df.empty:
+        return None
+    
+    try:
+        # Filter matches where team played (home or away)
+        team_matches = df[
+            (df.get('HomeTeam', df.get('home_team', '')) == team_name) |
+            (df.get('AwayTeam', df.get('away_team', '')) == team_name)
+        ].copy()
+        
+        if team_matches.empty:
+            return None
+        
+        # Sort by date (most recent last)
+        if 'Date' in team_matches.columns:
+            team_matches['Date'] = pd.to_datetime(team_matches['Date'], dayfirst=True, errors='coerce')
+            team_matches = team_matches.sort_values('Date')
+        
+        # Last 5 matches
+        last_5 = team_matches.tail(5)
+        
+        # Calculate goals for/against
+        goals_for = 0
+        goals_against = 0
+        for _, match in last_5.iterrows():
+            home_team = match.get('HomeTeam', match.get('home_team'))
+            fthg = match.get('FTHG', match.get('home_goals', 0))
+            ftag = match.get('FTAG', match.get('away_goals', 0))
+            
+            if home_team == team_name:
+                goals_for += fthg
+                goals_against += ftag
+            else:
+                goals_for += ftag
+                goals_against += fthg
+        
+        # Last 3 matches (clean sheets)
+        last_3 = team_matches.tail(3)
+        clean_sheets = 0
+        for _, match in last_3.iterrows():
+            home_team = match.get('HomeTeam', match.get('home_team'))
+            fthg = match.get('FTHG', match.get('home_goals', 0))
+            ftag = match.get('FTAG', match.get('away_goals', 0))
+            
+            if home_team == team_name and ftag == 0:
+                clean_sheets += 1
+            elif home_team != team_name and fthg == 0:
+                clean_sheets += 1
+        
+        return {
+            'last5_goals_scored': goals_for,
+            'last5_goals_conceded': goals_against,
+            'clean_sheets_last3': clean_sheets,
+            'matches_played': len(team_matches)
+        }
+    except Exception as e:
+        print(f"Error calculating stats for {team_name}: {e}")
+        return None
 
-def apply_league_filters(row, profile, league_name):
-    # ... (rest of the function)
+def apply_league_filters(row, profile, league_name, historical_df=None):
+    """Apply statistical filters based on league profile"""
+    home = row.get('home_team', row.get('HomeTeam', ''))
+    away = row.get('away_team', row.get('AwayTeam', ''))
+    
+    # 1. Check if this is a top team match
+    is_top_match = home in profile['team_top'] or away in profile['team_top']
+    if not is_top_match:
+        return False
+    
+    # 2. Get opponent (the non-top team)
+    opponent = away if home in profile['team_top'] else home
+    
+    # 3. If no historical data, allow match (trust watchlist/basic filter)
+    if historical_df is None or historical_df.empty:
+        return True
+    
+    # 4. Get opponent stats
+    opp_stats = calculate_team_stats(historical_df, opponent)
+    
+    # 5. If no stats available for opponent, allow (new team or data gap)
+    if not opp_stats:
+        return True
+    
+    # 6. Filter: Opponent goals scored in last 5 matches
+    if 'opp_last5_max' in profile:
+        if opp_stats['last5_goals_scored'] > profile['opp_last5_max']:
+            return False  # Opponent too strong offensively
+    
+    # 7. Filter: Top team clean sheets in last 3 (if configured)
+    if 'clean_last3_min' in profile:
+        top_team = home if home in profile['team_top'] else away
+        top_stats = calculate_team_stats(historical_df, top_team)
+        if top_stats and top_stats['clean_sheets_last3'] < profile['clean_last3_min']:
+            return False  # Top team not defensively solid
+    
     return True
 
 # ========================================
@@ -269,6 +384,10 @@ def scan_5leagues(days_ahead=7):
             elif 'date' in fixtures.columns and not pd.api.types.is_datetime64_any_dtype(fixtures['date']):
                 fixtures['date'] = pd.to_datetime(fixtures['date'], dayfirst=True, errors='coerce')
             
+            
+            # 5. Load historical data for stats (full season CSV)
+            historical_df = load_football_data_csv(name)  # Load full CSV for stats
+            
             # Drop invalid dates
             fixtures = fixtures.dropna(subset=['date'])
             
@@ -280,7 +399,8 @@ def scan_5leagues(days_ahead=7):
             upcoming = fixtures[mask]
             
             for _, match in upcoming.iterrows():
-                if apply_league_filters(match, config, name):
+                # Pass historical data to filter function
+                if apply_league_filters(match, config, name, historical_df):
                     date_str = match['date'].strftime('%Y-%m-%d %H:%M (MSK)')
                     home_team = match.get('home_team') or match.get('Home')
                     away_team = match.get('away_team') or match.get('Away')
@@ -292,13 +412,21 @@ def scan_5leagues(days_ahead=7):
                         away_cat, away_badge = get_watchlist_info(away_team)
                         watchlist_badge = home_badge or away_badge or "👁️ W"
                     
+                    # Fetch real odds
+                    real_odds = None
+                    if 'odds_key' in config:
+                        real_odds = get_real_odds(config['odds_key'], home_team, away_team)
+                    
+                    # Use real odds or fallback to min_odds
+                    signal_odds = real_odds if real_odds else config.get('min_odds', 1.80)
+                    
                     signals.append({
                         'League': name,
                         'Date': date_str,
                         'Home': home_team,
                         'Away': away_team,
                         'Prediction': 'Under 3.5 Opponent Goals',
-                        'Odds': config['min_odds'], # Placeholder
+                        'Odds': round(signal_odds, 2),
                         'Confidence': 'HIGH',
                         'Watchlist': watchlist_badge
                     })

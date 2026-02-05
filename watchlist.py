@@ -12,9 +12,7 @@ Two categories:
 # Priority when playing against BALANCED opponents (not crushing weaker teams)
 ELITE_DEFENSIVE_TEAMS = {
     # Russian Premier League
-    "Динам
-
-о Махачкала", "Балтика", "Рубин", "Зенит",
+    "Динамо Махачкала", "Балтика", "Рубин", "Зенит",
     
     # Portuguese Primeira Liga
     "Porto", "FC Porto",
