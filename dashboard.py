@@ -346,15 +346,15 @@ with tab_top:
             c4.write(f"**{row['Confidence Text']}**")
             c5.caption(f"{row.get('Probable Scores', '1:0, 1:1')}")
             
-            # H2H Column with Fallback to Odds API
+            # H2H Column with Fallback to External Search
             h2h_val = row.get('H2H', '')
             if not h2h_val or h2h_val == '—':
-                 real_odds = row.get('Odds', 0)
-                 if real_odds and real_odds > 0:
-                     h2h_val = f"Odds: {real_odds}"
-                 else:
-                     h2h_val = "—"
-            c6.caption(h2h_val)
+                 # Fallback: Link to Flashscore/Google
+                 query = f"{row['Home']} vs {row['Away']} flashscore h2h"
+                 link = f"https://www.google.com/search?q={query}"
+                 c6.markdown(f"[📊 Stats]({link})")
+            else:
+                 c6.caption(h2h_val)
             cols_date = row['Date'].split(' ')
             c7.write(f"{cols_date[0] if len(cols_date)>0 else row['Date']}")
             
