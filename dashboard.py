@@ -348,8 +348,30 @@ with tab_top:
         if selected_count > 0:
             st.success(f"Выбрано {selected_count} матчей")
             if st.button(f"🚀 Анализировать выбранные ({selected_count})", type="primary"):
-                # Format matches for input
-                matches_text = "\n".join(st.session_state['top_selected'])
+                # Format matches for input with metadata
+                matches_text_list = []
+                for match_str in st.session_state['top_selected']:
+                    # Find row in df_top for metadata
+                    try:
+                        # Split by " vs "
+                        parts = match_str.split(' vs ')
+                        if len(parts) == 2:
+                             home, away = parts[0], parts[1]
+                             # Filter dataframe
+                             row = df_top[ (df_top['Home'] == home) & (df_top['Away'] == away) ]
+                             if not row.empty:
+                                 r = row.iloc[0]
+                                 # Format: Match | Date: YYYY-MM-DD HH:MM | League: Name
+                                 line = f"{match_str} | Date: {r['Date']} | League: {r['League']}"
+                                 matches_text_list.append(line)
+                             else:
+                                 matches_text_list.append(match_str)
+                        else:
+                            matches_text_list.append(match_str)
+                    except Exception:
+                        matches_text_list.append(match_str)
+
+                matches_text = "\n".join(matches_text_list)
                 st.session_state['matches_input'] = matches_text
                 st.session_state['active_tab'] = "analyzer" # Helper to switch tab if implemented or user manually switches
                 st.info("Матчи скопированы в Анализатор! Перейдите во вкладку 'Редактор Экспрессов'")
