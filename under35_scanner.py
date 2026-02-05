@@ -9,6 +9,7 @@ import requests
 import numpy as np
 from datetime import datetime, timedelta
 import os
+from watchlist import is_watchlist_team, get_watchlist_info
 
 # Set to True if you have a working proxy/VPN for FBref, otherwise use CSV (False)
 USE_FBREF = False
@@ -281,14 +282,25 @@ def scan_5leagues(days_ahead=7):
             for _, match in upcoming.iterrows():
                 if apply_league_filters(match, config, name):
                     date_str = match['date'].strftime('%Y-%m-%d %H:%M (MSK)')
+                    home_team = match.get('home_team') or match.get('Home')
+                    away_team = match.get('away_team') or match.get('Away')
+                    
+                    # Check watchlist
+                    watchlist_badge = ""
+                    if is_watchlist_team(home_team) or is_watchlist_team(away_team):
+                        home_cat, home_badge = get_watchlist_info(home_team)
+                        away_cat, away_badge = get_watchlist_info(away_team)
+                        watchlist_badge = home_badge or away_badge or "👁️ W"
+                    
                     signals.append({
                         'League': name,
                         'Date': date_str,
-                        'Home': match.get('home_team') or match.get('Home'),
-                        'Away': match.get('away_team') or match.get('Away'),
+                        'Home': home_team,
+                        'Away': away_team,
                         'Prediction': 'Under 3.5 Opponent Goals',
                         'Odds': config['min_odds'], # Placeholder
-                        'Confidence': 'HIGH'
+                        'Confidence': 'HIGH',
+                        'Watchlist': watchlist_badge
                     })
     
     # If no strict signals, get popular matches
