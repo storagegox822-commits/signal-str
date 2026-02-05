@@ -261,10 +261,18 @@ with tab_top:
         c5.markdown("**Conf**")
         c6.markdown("**Date**")
         
+        # Cache badges to prevent changes on rerun
+        if 'cached_badges' not in st.session_state:
+            st.session_state['cached_badges'] = {}
+        
         for idx, row in df_top.iterrows():
             match_str = f"{row['Home']} vs {row['Away']}"
             is_selected = match_str in st.session_state['top_selected']
-            badges = get_match_badges(row)
+            
+            # Get or generate badges (cache them)
+            if match_str not in st.session_state['cached_badges']:
+                st.session_state['cached_badges'][match_str] = get_match_badges(row)
+            badges = st.session_state['cached_badges'][match_str]
             
             c1, c2, c3, c4, c5, c6 = st.columns([1, 4, 2, 2, 2, 2])
             if c1.checkbox("✓", key=f"top_{idx}", value=is_selected, label_visibility="collapsed"):
