@@ -46,12 +46,8 @@ try:
         analyze_express, 
         save_history, 
         notify_telegram,
-        get_history,
-        delete_history,
         AnalyzeRequest,
-        HistoryItem,
-        NotifyRequest, 
-        DeleteHistoryRequest
+        NotifyRequest
     )
     USE_INTERNAL_API = True
 except ImportError:
@@ -170,17 +166,49 @@ st.sidebar.markdown(f"### ⏳ Next Auto-Scan")
 st.sidebar.info(f"**In {days_rem}d {hours_rem}h {mins_rem}m**\n\n📅 {next_run.strftime('%d %b %H:%M UTC')}")
 
 if st.sidebar.checkbox("Manual Override (Debug)"):
-    if st.sidebar.button("Force Run Scan"):
-        with st.spinner("Scanning..."):
+    if st.sidebar.button("Force Run Scan (3-Step)"):
+        # Step 1: Standard Scan
+        with st.spinner("Step 1/3: Scanning Signals..."):
             try:
                 if USE_INTERNAL_API:
                      res = run_scan(3)
                      if res.get("status") == "success":
-                         st.sidebar.success(f"Found {res.get('found')} signals.")
+                         st.sidebar.success(f"Signals Found: {res.get('found')}")
                      else:
-                         st.sidebar.error(f"Failed: {res.get('log')}")
+                         st.sidebar.error(f"Scan Failed: {res.get('log')}")
             except Exception as e:
-                st.sidebar.error(f"Error: {e}")
+                st.sidebar.error(f"Scan Error: {e}")
+                
+        # Step 2: Scores24 Parsing (Background)
+        with st.spinner("Step 2/3: Parsing Scores24 (Today & Tomorrow)..."):
+            try:
+                from scores24_parser import parse_scores24_selenium
+                
+                # Fetch U2.5 and U3.5 for Today and Tomorrow
+                tasks = [
+                    ("https://scores24.live/en/predictions/soccer/under-2-5-goals", "Today"),
+                    ("https://scores24.live/en/predictions/soccer/under-2-5-goals", "Tomorrow"),
+                    ("https://scores24.live/en/predictions/soccer/under-3-5-goals", "Today"),
+                    ("https://scores24.live/en/predictions/soccer/under-3-5-goals", "Tomorrow")
+                ]
+                
+                extra_matches = []
+                for url, day in tasks:
+                    extra_matches.extend(parse_scores24_selenium(url, date_filter=day))
+                
+                if extra_matches:
+                    st.session_state['qwen_matches'] = extra_matches
+                    st.session_state['auto_qwen'] = True
+                    st.sidebar.success(f"Scores24: Found {len(extra_matches)} matches.")
+                else:
+                    st.sidebar.warning("Scores24: No matches found.")
+                    
+            except Exception as e:
+                st.sidebar.error(f"Parser Error: {e}")
+                
+        # Step 3: Trigger Qwen (Client-side)
+        st.sidebar.info("Step 3/3: Starting Qwen AI Analysis...")
+        st.rerun()
 
 
 
@@ -252,7 +280,7 @@ if USE_INTERNAL_API:
         st.error(f"Error loading signals: {e}")
 
 # --- Tabs ---
-tab_top, tab3, tab4, tab_qwen = st.tabs(["🔥 Топ Сигналы", "🛠️ Редактор Экспрессов", "🔙 Backtest", "🧠 Qwen AI"])
+tab_top, tab3 = st.tabs(["🔥 Топ Сигналы", "🛠️ Редактор Экспрессов"])
 
 with tab_top:
     st.subheader("🔥 Top Signals (Any Confidence)")
@@ -370,9 +398,47 @@ with tab_top:
             date_query = f"{row['Home']} vs {row['Away']} match date"
             encoded_date_query = urllib.parse.quote(date_query)
             date_link = f"https://www.google.com/search?q={encoded_date_query}"
-            c7.markdown(f"[{date_val}]({date_link})")
-            
+        
         st.divider()
+        
+        # --- Additional Selection (Scores24 & Qwen AI) ---
+        st.subheader("➕ Additional Selection (Scores24)")
+        
+        if st.button("🚀 Load & Analyze More Matches"):
+            with st.spinner("Parsing Scores24..."):
+                try:
+                    from scores24_parser import parse_scores24_selenium
+                    u25 = "https://scores24.live/en/predictions/soccer/under-2-5-goals"
+                    u35 = "https://scores24.live/en/predictions/soccer/under-3-5-goals"
+                    
+                    m1 = parse_scores24_selenium(u25)
+                    m2 = parse_scores24_selenium(u35)
+                    total_matches = m1 + m2
+                    
+                    if total_matches:
+                        st.session_state['qwen_matches'] = total_matches
+                        st.success(f"Found {len(total_matches)} matches! Starting Qwen AI...")
+                    else:
+                        st.warning("No matches found (check scraper).")
+                        
+                except Exception as e:
+                    st.error(f"Parser Error: {e}")
+        
+        if 'qwen_matches' in st.session_state and st.session_state['qwen_matches']:
+            st.write("---")
+            st.subheader("➕ Analysed Matches (Scores24)")
+            try:
+                from qwen_ui import qwen_batch_component
+                # Auto-start if triggered by Force Run Scan
+                is_auto = st.session_state.get('auto_qwen', False)
+                qwen_batch_component(st.session_state['qwen_matches'], autostart=is_auto)
+                
+                # Reset auto flag after render to prevent loop on next interaction
+                if is_auto:
+                    st.session_state['auto_qwen'] = False
+                    
+            except Exception as e:
+                st.error(f"Component Error: {e}")
         
         # 3. Transfer Action
         selected_count = len(st.session_state['top_selected'])
@@ -555,19 +621,38 @@ with tab3:
         )
     
     with col_in2:
-        model_choice = st.radio("Model", ["GPT-4o-Mini", "Perplexity Sonar"], index=0)
-        analyze_btn = st.button("🚀 Analyze Matches", type="primary", use_container_width=True)
+        st.info("🤖 Analyzer uses **Qwen AI** (Background Process)")
+        # model_choice = st.radio("Model", ["GPT-4o-Mini", "Perplexity Sonar"], index=0)
+        # analyze_btn = st.button("🚀 Analyze Matches", type="primary", use_container_width=True)
         
-    if analyze_btn and matches_text:
-        if not USE_INTERNAL_API:
-            st.error("Backend logic not available.")
-        else:
-            with st.spinner(f"Analyzing with {model_choice}..."):
-                try:
-                    # 1. Call AI
-                    matches_list = [m.strip() for m in matches_text.split('\n') if m.strip()]
-                    req = AnalyzeRequest(matches=matches_list, model=model_choice)
-                    result = analyze_express(req)
+    if matches_text:
+        # Parse text to match objects for Qwen Component
+        matches_list = [m.strip() for m in matches_text.split('\n') if m.strip()]
+        qwen_matches = []
+        for m in matches_list:
+            parts = m.split(' vs ')
+            if len(parts) == 2:
+                qwen_matches.append({
+                    "Home": parts[0], 
+                    "Away": parts[1], 
+                    "Date": "Unknown", 
+                    "Time": "-",
+                    "Probable Scores": "",
+                    "Conf": "",
+                    "Type": "",
+                    "H2H": ""
+                })
+        
+        if qwen_matches:
+            try:
+                from qwen_ui import qwen_batch_component
+                st.write("---")
+                qwen_batch_component(qwen_matches)
+            except Exception as e:
+                st.error(f"Component Error: {e}")
+
+    # Legacy code removal (commented out or removed)
+    # if analyze_btn and matches_text: ...
                     
                     if "analysis" in result:
                         analysis_text = result["analysis"]
@@ -854,28 +939,3 @@ with tab3:
                          st.error("Upload failed.")
              except Exception as e:
                  st.error(f"Error: {e}")
-
-
-with tab4:
-    st.subheader("📚 История Анализов (Backtest)")
-    col1, col2 = st.columns([1, 1])
-    if col1.button("🔄 Обновить"): st.rerun()
-    if col2.button("🗑️ Удалить ВСЕ", type="primary"):
-        if USE_INTERNAL_API: delete_history(DeleteHistoryRequest(delete_all=True))
-        st.success("Cleared!")
-        st.rerun()
-
-    history = []
-    if USE_INTERNAL_API: history = get_history()
-    
-    for item in reversed(history):
-        with st.expander(f"📅 {item.get('date')} | Matches: {len(item.get('matches',[]))}"):
-             st.json(item)
-
-# --- Qwen AI (Puter.js) Integration ---
-with tab_qwen:
-    try:
-        import qwen_ui
-        qwen_ui.qwen_component()
-    except Exception as e:
-        st.error(f"Failed to load Qwen UI: {e}")
