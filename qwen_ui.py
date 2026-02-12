@@ -1,5 +1,7 @@
 
+
 import streamlit.components.v1 as components
+import json
 
 def qwen_component():
     html_code = """
