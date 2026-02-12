@@ -190,24 +190,27 @@ def qwen_batch_component(matches, autostart=False):
 
                         const resp = await puter.ai.chat(promptSimple);
                         
+                        // Convert response to string (Puter may return object or string)
+                        const respText = typeof resp === 'string' ? resp : (resp.message || resp.content || JSON.stringify(resp));
+                        
                         let type = "—"; let conf = "—"; let scores = "—";
                         
                         // heuristic parsing if json fails or text is mixed
-                        if (resp.includes("{{")) {{
+                        if (respText.includes("{{")) {{
                              try {{
-                                 const jsonPart = resp.substring(resp.indexOf("{{"), resp.lastIndexOf("}}")+1);
+                                 const jsonPart = respText.substring(respText.indexOf("{{"), respText.lastIndexOf("}}")+1);
                                  const data = JSON.parse(jsonPart);
                                  type = data.type || type;
                                  conf = data.conf || conf;
                                  scores = data.scores || scores;
                              }} catch(e) {{
                                  // fallback parsing
-                                 if (resp.includes("Type:")) type = resp.split("Type:")[1].split("|")[0].trim();
+                                 if (respText.includes("Type:")) type = respText.split("Type:")[1].split("|")[0].trim();
                              }}
                         }} else {{
-                             if (resp.includes("Type:")) type = resp.split("Type:")[1].split("|")[0].trim();
-                             if (resp.includes("Conf:")) conf = resp.split("Conf:")[1].split("|")[0].trim();
-                             if (resp.includes("Scores:")) scores = resp.split("Scores:")[1].trim();
+                             if (respText.includes("Type:")) type = respText.split("Type:")[1].split("|")[0].trim();
+                             if (respText.includes("Conf:")) conf = respText.split("Conf:")[1].split("|")[0].trim();
+                             if (respText.includes("Scores:")) scores = respText.split("Scores:")[1].trim();
                         }}
                         
                         // Update DOM
