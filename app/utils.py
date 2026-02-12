@@ -4,6 +4,7 @@ import json
 import requests
 import paramiko
 from datetime import datetime
+from dotenv import load_dotenv
 
 def clean_match_name_html(m):
      m = re.sub(r'\d{4}-\d{2}-\d{2}', '', m)
@@ -252,10 +253,15 @@ def upload_to_beget(filename, content):
     """
     Uploads HTML to Beget via SFTP.
     """
-    HOST = 'ttimbah0.beget.tech'
-    USER = 'ttimbah0'
-    PASS = '@@Ae32c1c5'
-    REMOTE_DIR = '/home/t/ttimbah0/dev.5na5.ru/public_html/project/expbeg/snapshots'
+    import paramiko
+    load_dotenv()
+    
+    HOST = os.getenv('BEGET_HOST')
+    USER = os.getenv('BEGET_USER')
+    PASS = os.getenv('BEGET_PASSWORD')
+    REMOTE_PATH = os.getenv('BEGET_REMOTE_PATH')
+    # Use snapshots subdir as before, logic preserved
+    REMOTE_DIR = f"{REMOTE_PATH}/expbeg/snapshots"
     PUBLIC_URL = f"http://dev.5na5.ru/project/expbeg/snapshots/{filename}"
     
     try:

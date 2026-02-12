@@ -72,14 +72,40 @@ class OddsFetcher:
             for bookie in event.get('bookmakers', []):
                 for market in bookie.get('markets', []):
                     if market['key'] == 'h2h':
-                        # Assuming outcomes are [Home, Away] or [Home, Away, Draw]
+                        # Robust matching logic for H2H odds
                         outcomes = {o['name']: o['price'] for o in market['outcomes']}
-                        h2h[0] = outcomes.get(home, 0.0)
-                        h2h[1] = outcomes.get(away, 0.0)
-                        # Draw logic is tricky as name is usually 'Draw'
-                        h2h[2] = outcomes.get('Draw', 0.0)
+                        
+                        # 1. Try Exact Match
+                        h_price = outcomes.get(home, 0.0)
+                        a_price = outcomes.get(away, 0.0)
+                        d_price = outcomes.get('Draw', 0.0)
+                        
+                        # 2. Try Containment/Fuzzy if exact failed
+                        # Only iterate if exact match failed for home or away
+                        if h_price == 0.0 or a_price == 0.0:
+                            for name, price in outcomes.items():
+                                if name == 'Draw': 
+                                    d_price = price
+                                    continue
+                                
+                                n_low = name.lower()
+                                h_low = home.lower()
+                                a_low = away.lower()
+                                
+                                # Check Home
+                                if h_price == 0.0 and (h_low in n_low or n_low in h_low):
+                                    h_price = price
+                                    continue
+                                # Check Away
+                                if a_price == 0.0 and (a_low in n_low or n_low in a_low):
+                                    a_price = price
+                                    continue
+                        
+                        h2h[0] = h_price
+                        h2h[1] = a_price
+                        h2h[2] = d_price
                         break
-                if h2h[0]: break # Found odds from one bookie
+                if h2h[0] > 0 or h2h[2] > 0: break # Found odds (home or draw) from one bookie
             
             c.execute('''INSERT OR REPLACE INTO odds_cache 
                          (sport_key, event_id, home_team, away_team, commence_time, h2h_home, h2h_away, h2h_draw, last_updated)

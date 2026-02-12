@@ -252,7 +252,7 @@ if USE_INTERNAL_API:
         st.error(f"Error loading signals: {e}")
 
 # --- Tabs ---
-tab_top, tab3, tab4 = st.tabs(["🔥 Топ Сигналы", " Редактор Экспрессов", "🔙 Backtest"])
+tab_top, tab3, tab4, tab_qwen = st.tabs(["🔥 Топ Сигналы", "🛠️ Редактор Экспрессов", "🔙 Backtest", "🧠 Qwen AI"])
 
 with tab_top:
     st.subheader("🔥 Top Signals (Any Confidence)")
@@ -282,7 +282,7 @@ with tab_top:
             
             # Watchlist Detection (from scanner data or dynamic check)
             watchlist_col = row.get('Watchlist', '')
-            if watchlist_col:
+            if watchlist_col and isinstance(watchlist_col, str):
                 badges.append(watchlist_col)
             
             # Home Favorite Detection (based on probable scores)
@@ -348,15 +348,29 @@ with tab_top:
             
             # H2H Column with Fallback to External Search
             h2h_val = row.get('H2H', '')
-            if not h2h_val or h2h_val == '—':
+            
+            # Check for NaN / Empty / 'nan' string
+            is_empty = False
+            if pd.isna(h2h_val): is_empty = True
+            elif str(h2h_val).lower().strip() in ['', '—', 'nan']: is_empty = True
+            
+            if is_empty:
                  # Fallback: Link to Flashscore/Google
+                 import urllib.parse
                  query = f"{row['Home']} vs {row['Away']} flashscore h2h"
-                 link = f"https://www.google.com/search?q={query}"
+                 encoded_query = urllib.parse.quote(query)
+                 link = f"https://www.google.com/search?q={encoded_query}"
                  c6.markdown(f"[📊 Stats]({link})")
             else:
                  c6.caption(h2h_val)
             cols_date = row['Date'].split(' ')
-            c7.write(f"{cols_date[0] if len(cols_date)>0 else row['Date']}")
+            
+            date_val = cols_date[0] if len(cols_date)>0 else row['Date']
+            import urllib.parse
+            date_query = f"{row['Home']} vs {row['Away']} match date"
+            encoded_date_query = urllib.parse.quote(date_query)
+            date_link = f"https://www.google.com/search?q={encoded_date_query}"
+            c7.markdown(f"[{date_val}]({date_link})")
             
         st.divider()
         
@@ -857,3 +871,11 @@ with tab4:
     for item in reversed(history):
         with st.expander(f"📅 {item.get('date')} | Matches: {len(item.get('matches',[]))}"):
              st.json(item)
+
+# --- Qwen AI (Puter.js) Integration ---
+with tab_qwen:
+    try:
+        import qwen_ui
+        qwen_ui.qwen_component()
+    except Exception as e:
+        st.error(f"Failed to load Qwen UI: {e}")

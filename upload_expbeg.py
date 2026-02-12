@@ -1,10 +1,13 @@
-import paramiko
 import os
+import paramiko
+from dotenv import load_dotenv
 
-HOST = 'ttimbah0.beget.tech'
-USER = 'ttimbah0'
-PASS = '@@Ae32c1c5'
-REMOTE_PATH = '/home/t/ttimbah0/dev.5na5.ru/public_html/project/expbeg'
+load_dotenv()
+
+HOST = os.getenv('BEGET_HOST')
+USER = os.getenv('BEGET_USER')
+PASS = os.getenv('BEGET_PASSWORD')
+REMOTE_PATH = os.getenv('BEGET_REMOTE_PATH')
 LOCAL_FILE = 'expbeg_index.html'
 
 def deploy():

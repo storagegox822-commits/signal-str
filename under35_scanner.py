@@ -357,6 +357,50 @@ def calculate_confidence(home_team, away_team, watchlist_badge, opp_stats, top_s
     # 5. Cap at 99 (never 100%)
     return min(base, 99)
 
+def get_h2h_stats(home, away, historical_df, n=5):
+    """Get last N head-to-head matches between two teams"""
+    if historical_df is None or historical_df.empty:
+        return None
+    
+    try:
+        # Find H2H matches (both home/away combinations)
+        h2h = historical_df[
+            ((historical_df.get('HomeTeam', historical_df.get('home_team', '')) == home) & 
+             (historical_df.get('AwayTeam', historical_df.get('away_team', '')) == away)) |
+            ((historical_df.get('HomeTeam', historical_df.get('home_team', '')) == away) & 
+             (historical_df.get('AwayTeam', historical_df.get('away_team', '')) == home))
+        ].copy()
+        
+        if h2h.empty:
+            return None
+        
+        # Sort by date and take last N
+        if 'Date' in h2h.columns:
+            h2h['Date'] = pd.to_datetime(h2h['Date'], dayfirst=True, errors='coerce')
+            h2h = h2h.sort_values('Date')
+        
+        h2h = h2h.tail(n)
+        
+        # Calculate stats
+        total_goals = []
+        for _, match in h2h.iterrows():
+            fthg = match.get('FTHG', match.get('home_goals', 0))
+            ftag = match.get('FTAG', match.get('away_goals', 0))
+            total_goals.append(fthg + ftag)
+        
+        avg_goals = sum(total_goals) / len(total_goals)
+        under_35_count = sum(1 for g in total_goals if g <= 3)
+        under_35_rate = under_35_count / len(total_goals)
+        
+        return {
+            'h2h_matches': len(h2h),
+            'avg_goals': round(avg_goals, 2),
+            'under_35_rate': round(under_35_rate, 2),
+            'last_scores': total_goals[-3:] if len(total_goals) >= 3 else total_goals
+        }
+    except Exception as e:
+        print(f"Error calculating H2H for {home} vs {away}: {e}")
+        return None
 
 # ========================================
 # MAIN SCANNER
@@ -462,6 +506,20 @@ def scan_5leagues(days_ahead=7):
                         opp_stats, top_stats, name
                     )
                     
+                    # H2H Analysis (Phase 3)
+                    h2h_stats = get_h2h_stats(home_team, away_team, historical_df, n=5)
+                    
+                    # Filter: Skip if H2H shows high-scoring pattern
+                    if h2h_stats and h2h_stats['avg_goals'] > 3.5:
+                        continue  # Skip this match - H2H too high-scoring
+                    
+                    # Boost confidence if H2H shows strong Under 3.5 record
+                    if h2h_stats:
+                        if h2h_stats['under_35_rate'] >= 0.8:  # 80%+ Under 3.5
+                            confidence_score = min(confidence_score + 5, 99)
+                        elif h2h_stats['under_35_rate'] >= 0.6:  # 60%+ Under 3.5
+                            confidence_score = min(confidence_score + 3, 99)
+                    
                     # Fetch real odds
                     real_odds = None
                     if 'odds_key' in config:
@@ -470,6 +528,11 @@ def scan_5leagues(days_ahead=7):
                     # Use real odds or fallback to min_odds
                     signal_odds = real_odds if real_odds else config.get('min_odds', 1.80)
                     
+                    # Format H2H info for output
+                    h2h_info = ""
+                    if h2h_stats:
+                        h2h_info = f"{h2h_stats['h2h_matches']}H2H:{h2h_stats['avg_goals']}avg"
+                    
                     signals.append({
                         'League': name,
                         'Date': date_str,
@@ -477,9 +540,30 @@ def scan_5leagues(days_ahead=7):
                         'Away': away_team,
                         'Prediction': 'Under 3.5 Opponent Goals',
                         'Odds': round(signal_odds, 2),
-                        'Confidence': confidence_score,  # Now a number 70-99
-                        'Watchlist': watchlist_badge
+                        'Confidence': confidence_score,
+                        'Watchlist': watchlist_badge,
+                        'H2H': h2h_info
                     })
+    
+    # Phase 4: Time Correlation Detection
+    # Downgrade confidence for matches at the same time to encourage diversity
+    if signals:
+        time_counts = {}
+        for sig in signals:
+            # Extract time (HH:MM) from date string
+            match_time = sig['Date'].split(' ')[1] if ' ' in sig['Date'] else '00:00'
+            time_counts[match_time] = time_counts.get(match_time, 0) + 1
+        
+        # Apply penalty for time correlation
+        for sig in signals:
+            match_time = sig['Date'].split(' ')[1] if ' ' in sig['Date'] else '00:00'
+            
+            # If 3+ matches at same time, downgrade confidence
+            if time_counts[match_time] >= 3:
+                sig['Confidence'] = max(sig['Confidence'] - 10, 70)  # -10 penalty, min 70
+            # If 2 matches at same time, mild penalty
+            elif time_counts[match_time] == 2:
+                sig['Confidence'] = max(sig['Confidence'] - 5, 70)   # -5 penalty
     
     # If no strict signals, get popular matches
     if not signals:
