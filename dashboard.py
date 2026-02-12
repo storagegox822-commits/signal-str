@@ -651,63 +651,7 @@ with tab3:
             except Exception as e:
                 st.error(f"Component Error: {e}")
 
-    # Legacy code removal (commented out or removed)
-    # if analyze_btn and matches_text: ...
-                    
-                    if "analysis" in result:
-                        analysis_text = result["analysis"]
-                        
-                        # 2. Parse Results
-                        parsed_matches = parse_analysis(analysis_text)
-                        
-                        if len(parsed_matches) > 0:
-                            # 3. Auto-fill Editor
-                            ed_data = {}
-                            
-                            # Match 1
-                            m1 = parsed_matches[0]
-                            ed_data['m1_name'] = m1['name']
-                            ed_data['m1_meta'] = {'date': '', 'reason': 'AI Analysis'}
-                            ed_data['outcomes_1'] = m1['scores']
-                            
-                            # Match 2 (Optional)
-                            if len(parsed_matches) > 1:
-                                m2 = parsed_matches[1]
-                                ed_data['m2_name'] = m2['name']
-                                ed_data['m2_meta'] = {'date': '', 'reason': 'AI Analysis'}
-                                ed_data['outcomes_2'] = m2['scores']
-                            else:
-                                ed_data['m2_name'] = "Match 2 (Empty)"
-                                ed_data['m2_meta'] = {}
-                                ed_data['outcomes_2'] = ["1:0", "1:1", "0:0"]
-                            
-                            # Match 3 (Optional)
-                            if len(parsed_matches) > 2:
-                                m3 = parsed_matches[2]
-                                ed_data['m3_name'] = m3['name']
-                                ed_data['m3_meta'] = {'date': '', 'reason': 'AI Analysis'}
-                                ed_data['outcomes_3'] = m3['scores']
-                            else:
-                                ed_data['m3_name'] = "Match 3 (Empty)"
-                                ed_data['m3_meta'] = {}
-                                ed_data['outcomes_3'] = ["1:0", "1:1", "0:0"]
-                            
-                            st.session_state['express_data'] = ed_data
-                            
-                            # Auto-Calculate Odds (Heuristic)
-                            all_outs = ed_data['outcomes_1'] + ed_data['outcomes_2'] + ed_data['outcomes_3']
-                            st.session_state['odds_data'] = [suggest_odds(o) for o in all_outs]
-                            
-                            st.success(f"✅ Analysis Complete! Found {len(parsed_matches)} matches.")
-                            st.expander("View Full AI Analysis").markdown(analysis_text)
-                        else:
-                            st.warning(f"Could not parse any matches. Raw output:")
-                            st.text(analysis_text)
-                    else:
-                        st.error("No analysis returned.")
-                        
-                except Exception as e:
-                    st.error(f"Analysis failed: {e}")
+
 
     st.divider()
     
